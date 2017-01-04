@@ -7,14 +7,7 @@
 #include <DNSServer.h>
 #include <WiFiClient.h>
 #include <ESP8266mDNS.h>
-
-/* eeprom map
-	4 STA choices (64 each)
-		 33 ssid
-		 33 pwd
-		 4  static ip
-		 1  min quality
-*/
+#include <FS.h>
 
 /* AP credentials. */
 char ap_ssid[18];
@@ -29,6 +22,37 @@ const byte DNS_PORT = 53;
 DNSServer dnsServer;
 ESP8266WebServer server(80);
 
+/////////////  EEPROM  /////////////
+/* eeprom map
+  2  Magic = 0xedde
+  33 AP password
+	4 STA choices (71 each)
+		 33 ssid
+		 33 pwd
+		 4  static ip
+		 1  min quality
+	319 bytes total
+*/
+
+void initEEROM() {
+	EEPROM.begin(512);
+	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
+		Serial.println("initializing empty eerom");
+		File f = SPIFFS.open("/empty-eerom.dat", "r");
+    char buf[1];
+		int eeAddr;
+		for (eeAddr=0; eeAddr<f.size(); eeAddr++) {
+		  f.readBytes(buf,1);
+			EEPROM.write(eeAddr, buf[0]);
+		}
+		EEPROM.commit();
+		Serial.println(String("initialized ") + f.size() + " bytes");
+		f.close();
+	}
+	EEPROM.end();
+}
+
+/////////////  HTTP HANDLERS  /////////////
 void handleRoot() {
 	server.send(200, "text/plain", "XY App");
 }
@@ -42,14 +66,18 @@ void chkSrvr() {
   dnsServer.processNextRequest();
 }
 
+
+/////////////  SETUP  /////////////
 void setup() {
 	delay(3000);
 
 	pinMode(2, OUTPUT);
 	Serial.begin(115200);
-	Serial.println();
-
+	SPIFFS.begin();
+	initEEROM();
 	WiFi.mode(WIFI_AP_STA);
+
+	Serial.println();
 
 
 /////////////  AP  /////////////
