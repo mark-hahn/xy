@@ -1,80 +1,102 @@
-#include "handlers.h"
 
-#define CONN_TIMEOUT 60
-#define ledPcb 2
+/* Create a WiFi access point and provide a web server on it. */
 
-void ledOn()  { digitalWrite(ledPcb, 0); }
-void ledOff() { digitalWrite(ledPcb, 1); }
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <EEPROM.h>
+#include <DNSServer.h>
+#include <WiFiClient.h>
+#include <ESP8266mDNS.h>
 
-void setup() {
-  pinMode(ledPcb, OUTPUT);
-  ledOff();
+/* eeprom map
+	4 STA choices (64 each)
+		 33 ssid
+		 33 pwd
+		 4  static ip
+		 1  min quality
+*/
 
-  Serial.begin(115200);
-  Serial.println(String("starting XY wifi setup"));
+/* AP credentials. */
+char ap_ssid[18];
+String ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
+const char *ap_pwd = "NBVcvbasd987";
 
-  SPIFFS.begin();
-  {
-    Dir dir = SPIFFS.openDir("/");
-    while (dir.next()) {
-      String fileName = dir.fileName();
-      size_t fileSize = dir.fileSize();
-      Serial.printf("FS File: %s, size: %s\n", fileName.c_str(), formatBytes(fileSize).c_str());
-    }
-    Serial.printf("\n");
-  }
+/* STA credentials. */
+const char *sta_ssid = "hahn-fi";
+const char *sta_pwd = "NBVcvbasd987";
 
+const byte DNS_PORT = 53;
+DNSServer dnsServer;
+ESP8266WebServer server(80);
 
-///////////////// INIT WIFI  //////////////
-  WiFiManagerXy WiFiManagerXy;
-  WiFiManagerXy.resetSettings();
-  WiFiManagerXy.setTimeout(CONN_TIMEOUT);
-  WiFiManagerXy.setMinimumSignalQuality(15); // 15%
-
-  Serial.println("trying wifi autoconnect");
-  String ssid = WiFiManagerXy.autoConnect();
-  // WiFiManagerXy.connectWifi("","");
-  // WiFiManagerXy.startConfigPortal();
-
-  if (WiFi.status() != WL_CONNECTED) Serial.print("Waiting for connection");
-
-  // // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
-    ledOn();
-    delay(200);
-    ledOff();
-    delay(1000);
-    Serial.print(".");
-  }
-
-
-///////////////  HTTP SERVER  ///////////////
-  Serial.println("starting HTTP server");
-  //http://192.168.1.235/list?dir=
-  server.on("/list", HTTP_GET, handleFileList);
-  server.on("/edit", HTTP_GET, [](){
-    if(!handleFileRead("/edit.htm")) server.send(404, "text/plain", "FileNotFound");
-  });
-  server.on("/edit", HTTP_PUT, handleFileCreate);
-  server.on("/edit", HTTP_DELETE, handleFileDelete);
-  server.on("/edit", HTTP_POST, [](){ server.send(200, "text/plain", ""); }, handleFileUpload);
-  server.onNotFound([](){
-    if(!handleFileRead(server.uri()))
-      server.send(404, "text/plain", "eridien XY, 404: File Not Found");
-  });
-  server.on("/misc", HTTP_GET, [](){
-    String json = "{";
-    json += "\"heap\":"+String(ESP.getFreeHeap());
-    json += ", \"analog\":"+String(analogRead(A0));
-    json += ", \"gpio\":"+String((uint32_t)(((GPI | GPO) & 0xFFFF) | ((GP16I & 0x01) << 16)));
-    json += "}";
-    server.send(200, "text/json", json);
-    json = String();
-  });
-  server.begin();
-  Serial.println("HTTP server started");
+void handleRoot() {
+	server.send(200, "text/plain", "XY App");
 }
 
+void handle204() {
+	server.send(200, "text/plain", "The XY application can be found at xy.com when using the local " + ap_ssid_str);
+}
+
+void chkSrvr() {
+	server.handleClient();
+  dnsServer.processNextRequest();
+}
+
+void setup() {
+	delay(3000);
+
+	pinMode(2, OUTPUT);
+	Serial.begin(115200);
+	Serial.println();
+
+	WiFi.mode(WIFI_AP_STA);
+
+
+/////////////  AP  /////////////
+  ap_ssid_str.toCharArray(ap_ssid, 48);
+
+	Serial.print("Configuring access point " + String(ap_ssid) + ": ");
+	WiFi.softAP(ap_ssid, ap_pwd);
+
+	IPAddress apIP  = WiFi.softAPIP();
+	Serial.print("AP address: "); Serial.println(apIP);
+
+
+/////////////  DNS  /////////////
+	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+
+
+/////////////  SERVER  /////////////
+	server.on("/", handleRoot);
+	server.on("/generate_204", handle204);
+	server.begin();
+	Serial.println("HTTP server started");
+
+
+/////////////  STA  /////////////
+	Serial.print("Configuring station " + String(sta_ssid) + ": ");
+  WiFi.begin(sta_ssid, sta_pwd);
+
+  int timeout = 100;
+	while (WiFi.status() != WL_CONNECTED && timeout-- > 0) {
+    digitalWrite(2, 0);
+    delay(150);
+    digitalWrite(2, 1);
+    delay(150);
+		chkSrvr();
+  }
+	digitalWrite(2, 1);
+
+	IPAddress staIP = WiFi.localIP();
+	Serial.print("STA address: "); Serial.println(staIP);
+
+/////////////  MDNS  /////////////
+  MDNS.begin("xy");
+  MDNS.addService("http", "tcp", 80);
+}
+
+/////////////  LOOP  /////////////
 void loop() {
-  server.handleClient();
+	chkSrvr();
 }
