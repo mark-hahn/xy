@@ -79,19 +79,24 @@ void led_off() {digitalWrite(2, 1);}
 /* eeprom map
   2  Magic = 0xedde
   33 AP password
-	4 STA choices (71 each)
+	4 STA choices (86 each)
 		 33 ssid
 		 33 pwd
 		 4  static ip
-		 1  min quality
-	319 bytes total
+		 4  gateway ip
+		 4  subnet
+		 4  dns1 ip
+		 4  dns2 ip
+	379 bytes total
 */
+#define EEPROM_BYTES_OFS      35
+#define EEPROM_BYTES_PER_SSID 86
 
-void initEEROM() {
+void initeeprom() {
 	Serial.println(String("magic byte ") + String(EEPROM.read(0), HEX));
 	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
-		Serial.println("initializing empty eerom");
-		File f = SPIFFS.open("/empty-eerom.dat", "r");
+		Serial.println("initializing empty eeprom");
+		File f = SPIFFS.open("/empty-eeprom.dat", "r");
     char buf[1];
 		int eeAddr;
 		for (eeAddr=0; eeAddr<f.size(); eeAddr++) {
@@ -103,71 +108,72 @@ void initEEROM() {
 		f.close();
 	}
 }
-char* getString(char* res, int idx){
-	byte i=0, byt = 1;
-	do { res[i] = EEPROM.read(idx); i++; idx++;}
-	  while (res[i]);
+int eepromGetStr(char* res, int idx){
+	int i=0;
+	do { res[i] = EEPROM.read(idx); i++; idx++;} while (res[i]);
+	return idx+33;
 }
-int get_int(int idx){
-	int i, res = 0;
-	for(i=0; i<4; i++) {res=res << 8 || EEPROM.read(idx+i);}
-	return res;
+int eepromGetIP(IPAddress res, int idx){
+	int i;
+	for(i=0; i<4; i++) res[i] = EEPROM.read(idx+i);
+	return idx+4;
 }
-int get_byte(int idx) {
-	return EEPROM.read(idx);
-}
-void get_ap_pwd(char* res)           {res = getString(res, 2);}
-void get_ssid(char* res, int idx)    {res = getString(res, 2+idx*71+0);}
-void get_sta_pwd(char* res, int idx) {res = getString(res, 2+idx*71+33);}
-int get_static_ip(int idx){return get_int(2+idx*71+66);}
-int get_quality(int idx){return get_byte(2+idx*71+70);}
-
-
-/////////////  AP SETUP  /////////////
-char ap_ssid[18];
-String ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 
 
 /////////////  STA SETUP  /////////////
 char sta_ssid[33];
 char sta_pwd[33];
-int  sta_static_ip;
-int  sta_quality = -1;
+IPAddress sta_static_ip;
+IPAddress sta_gateway_ip;
+IPAddress sta_subnet;
+IPAddress sta_dns1_ip;
+IPAddress sta_dns2_ip;
+int best_quality = -1;
 
 int find_and_connect_STA() {
-	int n = WiFi.scanNetworks(), i, j;
-	char eerom_ssid[33];
+	int n = WiFi.scanNetworks(), i, j, eepromIdx;
+	char eeprom_ssid[33];
 	Serial.println(String("Wifi scan found ") + n + " ssids");
 	for(i=0; i<4; i++) {
-		get_ssid(eerom_ssid, i);
+		eepromIdx = eepromGetStr(eeprom_ssid, EEPROM_BYTES_OFS + i * EEPROM_BYTES_PER_SSID);
 		for(j=0; j<n; j++) {
-			if(strcmp(WiFi.SSID(j).c_str(), eerom_ssid) == 0 &&
+			if(strcmp(WiFi.SSID(j).c_str(), eeprom_ssid) == 0 &&
 			      WiFi.encryptionType(j) == ENC_TYPE_NONE) {
 		    int q, rssi = WiFi.RSSI(j);
 			  if (rssi <= -100) q = 0;
 			  else if (rssi >= -50) q = 100;
 			  else q = 2 * (rssi + 100);
-        if (q > get_quality(i) && q > sta_quality) {
-					strcpy(sta_ssid, eerom_ssid);
-					get_sta_pwd(sta_pwd, i);
-					sta_static_ip = get_static_ip(i);
-          sta_quality = q;
+        if (q > best_quality) {
+					int indx = 2+i*71;
+					strcpy(sta_ssid, eeprom_ssid);
+					eepromIdx = eepromGetStr(sta_pwd,       eepromIdx);
+					eepromIdx = eepromGetIP(sta_static_ip,  eepromIdx);
+					eepromIdx = eepromGetIP(sta_gateway_ip, eepromIdx);
+					eepromIdx = eepromGetIP(sta_subnet,     eepromIdx);
+					eepromIdx = eepromGetIP(sta_dns1_ip,    eepromIdx);
+					eepromIdx = eepromGetIP(sta_dns2_ip,    eepromIdx);
+          best_quality = q;
 				}
 			}
 		}
 	}
-	// TODO  DEBUG
-  if(sta_quality == -1) {
+	// TODO  REMOVE DEBUG
+  if(best_quality == -1) {
     Serial.println("no match found in scan, using debug settings");
 		strcpy(sta_ssid, "hahn-fi");
 		strcpy(sta_pwd, "NBVcvbasd987");
-		sta_quality = 101;
+		best_quality = 101;
 		// return 0;
 	}
-	Serial.println("Trying AP " + String(sta_ssid) + " with quality " + sta_quality);
+	Serial.println("Connecting to AP " + String(sta_ssid) + " with quality " + best_quality);
 	if(WiFi.status() == WL_CONNECTED) WiFi.disconnect();
+	if(sta_static_ip[0] || sta_gateway_ip[0] ||
+		    sta_subnet[0] || sta_dns1_ip[0] || sta_dns2_ip[0] )
+		WiFi.config(sta_static_ip, sta_gateway_ip,
+			         sta_subnet, sta_dns1_ip, sta_dns2_ip);
 	WiFi.begin(sta_ssid, sta_pwd);
 	while (WiFi.status() != WL_CONNECTED) chkSrvrBlink();
+	led_off();
 	return 1;
 }
 
@@ -178,7 +184,7 @@ void handleRoot() {
 }
 
 void handle204() {
-	server.send(200, "text/plain", "The XY application can be found at xy.com when using the local " + ap_ssid_str);
+	server.send(200, "text/plain", "The XY application can usually be found at xy.local");
 }
 
 /////////////  SETUP  /////////////
@@ -191,14 +197,16 @@ void setup() {
 	Serial.begin(115200);
 	SPIFFS.begin();
 	WiFi.mode(WIFI_AP_STA);
-	initEEROM();
+	initeeprom();
 	EEPROM.begin(512);
 
 
 /////////////  AP  /////////////
-  char ap_pwd[33];
-	get_ap_pwd(ap_pwd);
-  ap_ssid_str.toCharArray(ap_ssid, 48);
+	char ap_ssid[18];
+  String ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
+	ap_ssid_str.toCharArray(ap_ssid, 18);
+	char ap_pwd[33];
+	eepromGetStr(ap_pwd, 2);
 
 	Serial.print("Configuring access point " + String(ap_ssid) + ": ");
 	WiFi.softAP(ap_ssid, ap_pwd);
@@ -223,7 +231,6 @@ void setup() {
 /////////////  STA  /////////////
 	if (find_and_connect_STA()) {
 		Serial.println("Connected as station " + WiFi.localIP().toString());
-		led_off();
 		startOTA();
   }
 
