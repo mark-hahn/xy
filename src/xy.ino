@@ -124,7 +124,7 @@ int eepromGetIP(IPAddress res, int idx){
 char sta_ssid[33];
 char sta_pwd[33];
 IPAddress sta_static_ip;
-IPAddress sta_gateway_ip;
+IPAddress sta_gateway_ip = ip(192.168.1.1);
 IPAddress sta_subnet;
 IPAddress sta_dns1_ip;
 IPAddress sta_dns2_ip;
