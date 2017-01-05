@@ -9,43 +9,51 @@
 #include <WiFiClient.h>
 #include <ESP8266mDNS.h>
 #include <FS.h>
-#include <ArduinoOTA.h>
+#include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 
 ESP8266WebServer server(80);
 DNSServer dnsServer;
 
 
-/////////////  OTA  /////////////
-int otaCmd;
-void startOTA() {
-	ArduinoOTA.onStart([]() {
-		String type;
-		otaCmd = ArduinoOTA.getCommand();
-    if (otaCmd == U_FLASH) type = "firmware";
-                      else type = "filesystem";
-    if(otaCmd == U_SPIFFS) SPIFFS.end();
-    Serial.println("\nOTA updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-		if(otaCmd == U_SPIFFS) SPIFFS.begin();
-    Serial.println("Finished OTA update");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("OTA Progress: %u%%\r", progress*100/total);
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-		const char* err_str;
-		switch (error) {
-			case OTA_AUTH_ERROR: err_str = "Auth"; break;
-			case OTA_BEGIN_ERROR: err_str = "Begin"; break;
-			case OTA_CONNECT_ERROR: err_str = "Connect"; break;
-			case OTA_RECEIVE_ERROR: err_str = "Receive"; break;
-			case OTA_END_ERROR: err_str = "End"; break;
-		}
-    Serial.println("OTA " + String(err_str) + " error");
-		if(otaCmd == U_SPIFFS) SPIFFS.begin();
-  });
-	ArduinoOTA.begin();
+///////////////  UPDATES  //////////////
+void do_firmware_update() {
+	server.send(200, "text/plain", "Started firmware update");
+	Serial.println("Updating firmware from http://hahnca.com/xy/firmware.bin");
+	delay(1000);
+	ESPhttpUpdate.rebootOnUpdate(true);
+  t_httpUpdate_return ret = ESPhttpUpdate.update("http://hahnca.com/xy/firmware.bin");
+  switch(ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("Firmware Update Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+      break;
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("No firmware Updates");
+      break;
+    default:
+      Serial.println("firmware Updated (you shouldn't see this)");
+      break;
+  }
+}
+
+void do_spiffs_update() {
+	server.send(200, "text/plain", "Started file system update");
+	Serial.println("Updating file system from http://hahnca.com/xy/spiffs.bin");
+	delay(1000);
+	ESPhttpUpdate.rebootOnUpdate(false);
+  t_httpUpdate_return ret = ESPhttpUpdate.updateSpiffs(
+															"http://hahnca.com/xy/spiffs.bin");
+  switch(ret) {
+    case HTTP_UPDATE_FAILED:
+      Serial.printf("FS Update Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+      break;
+    case HTTP_UPDATE_NO_UPDATES:
+      Serial.println("No FS Updates");
+      break;
+    default:
+      Serial.println("FS Updated");
+      break;
+  }
 }
 
 
@@ -53,7 +61,6 @@ void startOTA() {
 void chkSrvr() {
 	server.handleClient();
   dnsServer.processNextRequest();
-	ArduinoOTA.handle();
 }
 void chkSrvrBlink() {
 		int i;
@@ -194,18 +201,20 @@ void handleRoot() {
 	server.send(200, "text/plain", "XY App");
 }
 
+
 void handle204() {
 	server.send(200, "text/plain", "The XY application can usually be found at xy.local");
 }
 
 /////////////  SETUP  /////////////
 void setup() {
-	ESP.getFreeSketchSpace();
 	delay(1000);
-	Serial.println("\napp start");
+
+	Serial.begin(115200);
+	Serial.println("\nApp Start -- v4");
+	Serial.println(String("FreeSketchSpace: ") + ESP.getFreeSketchSpace());
 
 	pinMode(2, OUTPUT);
-	Serial.begin(115200);
 	SPIFFS.begin();
 	WiFi.mode(WIFI_AP_STA);
 	initeeprom();
@@ -235,6 +244,8 @@ void setup() {
 /////////////  SERVER  /////////////
 	server.on("/", handleRoot);
 	server.on("/generate_204", handle204);
+	server.on ( "/f", do_firmware_update);
+	server.on ( "/fs", do_spiffs_update);
 	server.begin();
 	Serial.println("HTTP server started");
 
@@ -242,7 +253,6 @@ void setup() {
 /////////////  STA  /////////////
 	if (find_and_connect_STA()) {
 		Serial.println("Connected as station " + WiFi.localIP().toString());
-		startOTA();
   }
 
 /////////////  MDNS  /////////////
