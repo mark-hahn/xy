@@ -124,13 +124,24 @@ int eepromGetIP(IPAddress res, int idx){
 char sta_ssid[33];
 char sta_pwd[33];
 IPAddress sta_static_ip;
-IPAddress sta_gateway_ip = ip(192.168.1.1);
+IPAddress sta_gateway_ip;
 IPAddress sta_subnet;
 IPAddress sta_dns1_ip;
 IPAddress sta_dns2_ip;
 int best_quality = -1;
 
 int find_and_connect_STA() {
+
+	// sta_static_ip[0] = 192;
+	// sta_static_ip[1] = 168;
+	// sta_static_ip[2] = 1;
+	// sta_static_ip[3] = 41;
+	//
+	// sta_dns1_ip[0] = 8;
+	// sta_dns1_ip[1] = 8;
+	// sta_dns1_ip[2] = 8;
+	// sta_dns1_ip[3] = 8;
+	//
 	int n = WiFi.scanNetworks(), i, j, eepromIdx;
 	char eeprom_ssid[33];
 	Serial.println(String("Wifi scan found ") + n + " ssids");
@@ -167,10 +178,10 @@ int find_and_connect_STA() {
 	}
 	Serial.println("Connecting to AP " + String(sta_ssid) + " with quality " + best_quality);
 	if(WiFi.status() == WL_CONNECTED) WiFi.disconnect();
-	if(sta_static_ip[0] || sta_gateway_ip[0] ||
-		    sta_subnet[0] || sta_dns1_ip[0] || sta_dns2_ip[0] )
-		WiFi.config(sta_static_ip, sta_gateway_ip,
-			         sta_subnet, sta_dns1_ip, sta_dns2_ip);
+	if(sta_static_ip[0] || sta_gateway_ip[0] || sta_subnet[0] ||
+		   sta_dns1_ip[0] || sta_dns2_ip[0])
+		WiFi.config(sta_static_ip, sta_gateway_ip, sta_subnet,
+				        sta_dns1_ip, sta_dns2_ip);
 	WiFi.begin(sta_ssid, sta_pwd);
 	while (WiFi.status() != WL_CONNECTED) chkSrvrBlink();
 	led_off();
