@@ -86,18 +86,13 @@ void led_off() {digitalWrite(2, 1);}
 /* eeprom map
   2  Magic = 0xedde
   33 AP password
-	4 STA choices (86 each)
+	4 STA choices (66 each)
 		 33 ssid
 		 33 pwd
-		 4  static ip
-		 4  gateway ip
-		 4  subnet
-		 4  dns1 ip
-		 4  dns2 ip
-	379 bytes total
+	299 bytes total
 */
 #define EEPROM_BYTES_OFS      35
-#define EEPROM_BYTES_PER_SSID 86
+#define EEPROM_BYTES_PER_SSID 66
 
 void initeeprom() {
 	Serial.println(String("magic byte ") + String(EEPROM.read(0), HEX));
@@ -130,25 +125,9 @@ int eepromGetIP(IPAddress res, int idx){
 /////////////  STA SETUP  /////////////
 char sta_ssid[33];
 char sta_pwd[33];
-IPAddress sta_static_ip;
-IPAddress sta_gateway_ip;
-IPAddress sta_subnet;
-IPAddress sta_dns1_ip;
-IPAddress sta_dns2_ip;
 int best_quality = -1;
 
 int find_and_connect_STA() {
-
-	// sta_static_ip[0] = 192;
-	// sta_static_ip[1] = 168;
-	// sta_static_ip[2] = 1;
-	// sta_static_ip[3] = 41;
-	//
-	// sta_dns1_ip[0] = 8;
-	// sta_dns1_ip[1] = 8;
-	// sta_dns1_ip[2] = 8;
-	// sta_dns1_ip[3] = 8;
-	//
 	int n = WiFi.scanNetworks(), i, j, eepromIdx;
 	char eeprom_ssid[33];
 	Serial.println(String("Wifi scan found ") + n + " ssids");
@@ -162,14 +141,8 @@ int find_and_connect_STA() {
 			  else if (rssi >= -50) q = 100;
 			  else q = 2 * (rssi + 100);
         if (q > best_quality) {
-					int indx = 2+i*71;
 					strcpy(sta_ssid, eeprom_ssid);
 					eepromIdx = eepromGetStr(sta_pwd,       eepromIdx);
-					eepromIdx = eepromGetIP(sta_static_ip,  eepromIdx);
-					eepromIdx = eepromGetIP(sta_gateway_ip, eepromIdx);
-					eepromIdx = eepromGetIP(sta_subnet,     eepromIdx);
-					eepromIdx = eepromGetIP(sta_dns1_ip,    eepromIdx);
-					eepromIdx = eepromGetIP(sta_dns2_ip,    eepromIdx);
           best_quality = q;
 				}
 			}
@@ -185,10 +158,6 @@ int find_and_connect_STA() {
 	}
 	Serial.println("Connecting to AP " + String(sta_ssid) + " with quality " + best_quality);
 	if(WiFi.status() == WL_CONNECTED) WiFi.disconnect();
-	if(sta_static_ip[0] || sta_gateway_ip[0] || sta_subnet[0] ||
-		   sta_dns1_ip[0] || sta_dns2_ip[0])
-		WiFi.config(sta_static_ip, sta_gateway_ip, sta_subnet,
-				        sta_dns1_ip, sta_dns2_ip);
 	WiFi.begin(sta_ssid, sta_pwd);
 	while (WiFi.status() != WL_CONNECTED) chkSrvrBlink();
 	led_off();
@@ -200,8 +169,6 @@ int find_and_connect_STA() {
 void handleRoot() {
 	server.send(200, "text/plain", "XY App");
 }
-
-
 void handle204() {
 	server.send(200, "text/plain", "The XY application can usually be found at xy.local");
 }
@@ -211,7 +178,7 @@ void setup() {
 	delay(1000);
 
 	Serial.begin(115200);
-	Serial.println("\nApp Start -- v4");
+	Serial.println("\nApp Start -- v5");
 	Serial.println(String("FreeSketchSpace: ") + ESP.getFreeSketchSpace());
 
 	pinMode(2, OUTPUT);
