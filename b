@@ -11,4 +11,4 @@ cp -a scripts/* ~/dev/p2/arduino/xy/data/scripts
 cd ~/dev/p2/arduino/xy
 pio run -t buildfs
 
-# curl http://192.168.1.235/upload --data-binary -d data/eridien-logo.jpg
+# curl http://192.168.1.235 --data-binary -d data/eridien-logo.jpg
