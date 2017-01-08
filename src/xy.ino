@@ -1,21 +1,104 @@
 
-/* Create a WiFi access point and provide a web server on it. */
 
-#include <ESP8266WebServer.h>
-#include <EEPROM.h>
-#include <DNSServer.h>
-#include <ESP8266mDNS.h>
-#include <FS.h>
+#define VERSION "version 7"
+
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
 #include <ESP8266httpUpdate.h>
+#include <ESP8266mDNS.h>
+#include <EEPROM.h>
+#include <FS.h>
+#include <SPIFFSEditor.h>
+#include <Hash.h>
 
-ESP8266WebServer server(80);
-DNSServer dnsServer;
+// #include <DNSServer.h>
+
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+char ap_ssid[33];
+char ap_pwd[33];
+
+
+//////////////////  WEB SOCKET  //////////////////
+void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  if(type == WS_EVT_CONNECT){
+    Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
+    client->printf("Hello Client %u :)", client->id());
+    client->ping();
+  } else if(type == WS_EVT_DISCONNECT){
+    Serial.printf("ws[%s][%u] disconnect: %u\n", server->url(), client->id());
+  } else if(type == WS_EVT_ERROR){
+    Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
+  } else if(type == WS_EVT_PONG){
+    Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len)?(char*)data:"");
+  } else if(type == WS_EVT_DATA){
+    AwsFrameInfo * info = (AwsFrameInfo*)arg;
+    String msg = "";
+    if(info->final && info->index == 0 && info->len == len){
+      //the whole message is in a single frame and we got all of it's data
+      Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
+
+      if(info->opcode == WS_TEXT){
+        for(size_t i=0; i < info->len; i++) {
+          msg += (char) data[i];
+        }
+      } else {
+        char buff[3];
+        for(size_t i=0; i < info->len; i++) {
+          sprintf(buff, "%02x ", (uint8_t) data[i]);
+          msg += buff ;
+        }
+      }
+      Serial.printf("%s\n",msg.c_str());
+
+      if(info->opcode == WS_TEXT)
+        client->text("I got your text message");
+      else
+        client->binary("I got your binary message");
+    } else {
+      //message is comprised of multiple frames or the frame is split into multiple packets
+      if(info->index == 0){
+        if(info->num == 0)
+          Serial.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
+        Serial.printf("ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
+      }
+
+      Serial.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: ", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT)?"text":"binary", info->index, info->index + len);
+
+      if(info->opcode == WS_TEXT){
+        for(size_t i=0; i < info->len; i++) {
+          msg += (char) data[i];
+        }
+      } else {
+        char buff[3];
+        for(size_t i=0; i < info->len; i++) {
+          sprintf(buff, "%02x ", (uint8_t) data[i]);
+          msg += buff ;
+        }
+      }
+      Serial.printf("%s\n",msg.c_str());
+
+      if((info->index + len) == info->len){
+        Serial.printf("ws[%s][%u] frame[%u] end[%llu]\n", server->url(), client->id(), info->num, info->len);
+        if(info->final){
+          Serial.printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
+          if(info->message_opcode == WS_TEXT)
+            client->text("I got your text message");
+          else
+            client->binary("I got your binary message");
+        }
+      }
+    }
+  }
+}
 
 
 ///////////////  UPDATES  //////////////
-void do_firmware_update() {
-	server.send(200, "text/plain", "Started firmware update");
-	Serial.println("Updating firmware from http://hahnca.com/xy/firmware.bin");
+AsyncWebServerRequest * firmUpdateReq;
+void do_firmware_update(AsyncWebServerRequest *request) {
+  firmUpdateReq = (AsyncWebServerRequest *) 0;
+	request->send(200, "text/plain", "Started firmware update");
+	Serial.println("\nUpdating firmware from http://hahnca.com/xy/firmware.bin");
 	delay(1000);
 	ESPhttpUpdate.rebootOnUpdate(true);
   t_httpUpdate_return ret = ESPhttpUpdate.update("http://hahnca.com/xy/firmware.bin");
@@ -31,9 +114,10 @@ void do_firmware_update() {
       break;
   }
 }
-
-void do_spiffs_update() {
-	server.send(200, "text/plain", "Started file system update");
+AsyncWebServerRequest * fsUpdateReq;
+void do_spiffs_update(AsyncWebServerRequest *request) {
+  fsUpdateReq = (AsyncWebServerRequest *) 0;
+	request->send(200, "text/plain", "Started file system update");
 	Serial.println("Updating file system from http://hahnca.com/xy/spiffs.bin");
 	delay(1000);
 	ESPhttpUpdate.rebootOnUpdate(false);
@@ -50,26 +134,6 @@ void do_spiffs_update() {
       Serial.println("FS Updated");
       break;
   }
-}
-
-
-/////////////  YIELD  TO WIFI  /////////////
-void chkSrvr() {
-	server.handleClient();
-  dnsServer.processNextRequest();
-}
-void chkSrvrBlink() {
-		int i;
-		led_on();
-		for (i=0; i<100; i++) {
-			delay(1);
-      chkSrvr();
-		}
-		led_off();
-		for (i=0; i<100; i++) {
-			delay(1);
-      chkSrvr();
-		}
 }
 
 
@@ -95,6 +159,7 @@ void led_off() {digitalWrite(2, 1);}
 void initeeprom() {
 	char buf[33];
 	int bufidx, eeAddr;
+	String ap_ssid_str;
 	EEPROM.begin(512);
 	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
 		Serial.println("initializing empty eeprom, magic was: " +
@@ -103,7 +168,7 @@ void initeeprom() {
 		EEPROM.write(1, 0xde);
 		for (eeAddr=2; eeAddr<348; eeAddr++) { EEPROM.write(eeAddr, 0); }
 
-	  String ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
+	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 		ap_ssid_str.toCharArray(buf, 33);
 		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+2, buf[bufidx]);
 		EEPROM.write(bufidx+2, 0);
@@ -130,6 +195,7 @@ int eepromGetIP(IPAddress res, int idx){
 /////////////  STA SETUP  /////////////
 char sta_ssid[33];
 char sta_pwd[33];
+char hostName[33];
 int best_quality = -1;
 
 int find_and_connect_STA() {
@@ -158,152 +224,123 @@ int find_and_connect_STA() {
 		// return 0;
 	}
 	Serial.println("Connecting to AP " + String(sta_ssid) + " with quality " + best_quality);
-	if(WiFi.status() == WL_CONNECTED) WiFi.disconnect();
-	WiFi.begin(sta_ssid, sta_pwd);
-	while (WiFi.status() != WL_CONNECTED) chkSrvrBlink();
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(ap_ssid);
+  WiFi.begin(sta_ssid, sta_pwd);
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.printf("STA: Failed!\n");
+    WiFi.disconnect(false);
+    delay(1000);
+    WiFi.begin(sta_ssid, sta_pwd);
+  }
 	led_off();
 	return 1;
 }
 
-
-/////////////  HTTP HANDLERS  /////////////
-File fsUploadFile;
-
-String formatBytes(size_t bytes){
-  if (bytes < 1024){
-    return String(bytes)+"B";
-  } else if(bytes < (1024 * 1024)){
-    return String(bytes/1024.0)+"KB";
-  } else if(bytes < (1024 * 1024 * 1024)){
-    return String(bytes/1024.0/1024.0)+"MB";
-  } else {
-    return String(bytes/1024.0/1024.0/1024.0)+"GB";
-  }
-}
-
-String getContentType(String filename){
-  if(server.hasArg("download")) return "application/octet-stream";
-  else if(filename.endsWith(".htm")) return "text/html";
-  else if(filename.endsWith(".html")) return "text/html";
-  else if(filename.endsWith(".css")) return "text/css";
-  else if(filename.endsWith(".js")) return "application/javascript";
-  else if(filename.endsWith(".png")) return "image/png";
-  else if(filename.endsWith(".gif")) return "image/gif";
-  else if(filename.endsWith(".jpg")) return "image/jpeg";
-  else if(filename.endsWith(".ico")) return "image/x-icon";
-  else if(filename.endsWith(".zip")) return "application/x-zip";
-  else if(filename.endsWith(".gz")) return "application/x-gzip";
-  return "text/plain";
-}
-
-bool handleFileRead(String path){
-	Serial.println(String("reading ") + path);
-	if (path.endsWith("/")) path += "index.html";
-	path.replace("scripts/", "");
-  String contentType = getContentType(path);
-  String pathWithGz = path + ".gz";
-	bool gzExists;
-  if( (gzExists = SPIFFS.exists(pathWithGz)) || SPIFFS.exists(path)){
-    if(gzExists) path += ".gz";
-    File file = SPIFFS.open(path, "r");
-    size_t sent = server.streamFile(file, contentType);
-		Serial.println(String("sent ") + sent + " bytes from file " + path);
-    file.close();
-    return true;
-  }
-  return false;
-}
-void handleFileUpload(){
-	Serial.println(String("handleFileUpload: ") + server.uri());
-	if(server.uri() != "/upload") return;
-  HTTPUpload& upload = server.upload();
-  if(upload.status == UPLOAD_FILE_START){
-    String filename = upload.filename;
-		Serial.println(String("status: ") + upload.status);
-		Serial.println(String("filename: ") + upload.filename);
-		Serial.println(String("name: ") + upload.name);
-		Serial.println(String("type: ") + upload.type);
-		Serial.println(String("totalSize: ") + upload.totalSize);
-		Serial.println(String("currentSize: ") + upload.currentSize);
-    if(!filename.startsWith("/")) filename = "/"+filename;
-    fsUploadFile = SPIFFS.open(filename, "w");
-    filename = String();
-  } else if(upload.status == UPLOAD_FILE_WRITE){
-    Serial.println(String("UPLOAD_FILE_WRITE size: ")+upload.currentSize);
-    if(fsUploadFile) fsUploadFile.write(upload.buf, upload.currentSize);
-  } else if(upload.status == UPLOAD_FILE_END){
-    if(fsUploadFile) fsUploadFile.close();
-    Serial.println(String("UPLOAD_FILE_END size: ")+upload.totalSize);
-  }
-}
-void handle204() {
-	server.send(200, "text/plain", "The XY application can usually be found at xy.local");
-}
-void handle_list_ssids() {
-	WiFiClient client = server.client();
-	int n = WiFi.scanNetworks(), i, j, eepromIdx;
-	Serial.println(String("Wifi scan listing ") + n + " ssids");
-  client.println("HTTP/1.1 200 OK");
-  client.println("Content-Type: application/json;charset=utf-8");
-  client.println("Server: Arduino");
-  client.println("Connection: close");
-  client.println();
-  client.print("[");
-	for(j=0; j<n; j++) {
-		client.print("{\"ssid\":\"" + WiFi.SSID(j) + "\",");
-		client.print(String("\"rssi\":") + WiFi.RSSI(j) + "}" +
-	    																		(j==n-1?"":","));
-	}
-	client.println("]");
-}
 
 /////////////  SETUP  /////////////
 void setup() {
 	delay(1000);
 
 	Serial.begin(115200);
-	Serial.println("\nApp Start -- v5");
+	Serial.println(String("\n\nApp Start -- ") + VERSION);
 	Serial.println(String("FreeSketchSpace: ") + ESP.getFreeSketchSpace());
+
+	initeeprom();
 
 	pinMode(2, OUTPUT);
 	SPIFFS.begin();
-	WiFi.mode(WIFI_AP_STA);
-	initeeprom();
 
 
 /////////////  AP  /////////////
-	char ap_ssid[33];
-	char ap_pwd[33];
 	eepromGetStr(ap_ssid, 2);
 	eepromGetStr(ap_pwd, 35);
 
-	Serial.print("Configuring access point " + String(ap_ssid) + ": ");
+	Serial.println(String("Configuring access point: ") + ap_ssid);
 	WiFi.softAP(ap_ssid, ap_pwd);
-
 	IPAddress apIP  = WiFi.softAPIP();
-	Serial.print("AP address: "); Serial.println(apIP);
+	Serial.println(String("AP address: ") + apIP);
 
 
 /////////////  DNS  /////////////
-	const byte DNS_PORT = 53;
-	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+	// const byte DNS_PORT = 53;
+	// dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+	// dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
 
 
 /////////////  SERVER  /////////////
-	server.on ( "/f", do_firmware_update);
-	server.on ( "/fs", do_spiffs_update);
-	server.on ( "/ssids", handle_list_ssids);
-	server.on("/generate_204", handle204);
-  server.on("/edit", HTTP_POST,
-						[](){server.send(200, "text/plain", "");}, handleFileUpload);
-  // server.onFileUpload(handleFileUpload);
-	server.onNotFound([](){
-		if(!handleFileRead(server.uri()))
-			Serial.println(String("File Not Found: ") + server.uri());
-			server.send(404, "text/plain", "File Not Found");
-		});
-	server.begin();
+  // server.addHandler(new SPIFFSEditor(http_username,http_password));
+  server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(200, "text/plain", String(ESP.getFreeHeap()));
+  });
+  server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
+    firmUpdateReq = request;;
+  });
+  server.on("/fs", HTTP_GET, [](AsyncWebServerRequest *request){
+    fsUpdateReq = request;;
+  });
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  server.onNotFound([](AsyncWebServerRequest *request){
+    Serial.printf("NOT_FOUND: ");
+    if(request->method() == HTTP_GET)
+      Serial.printf("GET");
+    else if(request->method() == HTTP_POST)
+      Serial.printf("POST");
+    else if(request->method() == HTTP_DELETE)
+      Serial.printf("DELETE");
+    else if(request->method() == HTTP_PUT)
+      Serial.printf("PUT");
+    else if(request->method() == HTTP_PATCH)
+      Serial.printf("PATCH");
+    else if(request->method() == HTTP_HEAD)
+      Serial.printf("HEAD");
+    else if(request->method() == HTTP_OPTIONS)
+      Serial.printf("OPTIONS");
+    else
+      Serial.printf("UNKNOWN");
+    Serial.printf(" http://%s%s\n", request->host().c_str(), request->url().c_str());
+
+    if(request->contentLength()){
+      Serial.printf("_CONTENT_TYPE: %s\n", request->contentType().c_str());
+      Serial.printf("_CONTENT_LENGTH: %u\n", request->contentLength());
+    }
+
+    int headers = request->headers();
+    int i;
+    for(i=0;i<headers;i++){
+      AsyncWebHeader* h = request->getHeader(i);
+      Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
+    }
+
+    int params = request->params();
+    for(i=0;i<params;i++){
+      AsyncWebParameter* p = request->getParam(i);
+      if(p->isFile()){
+        Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+      } else if(p->isPost()){
+        Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      } else {
+        Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+      }
+    }
+
+    request->send(404);
+  });
+  server.onFileUpload([](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final){
+    if(!index)
+      Serial.printf("UploadStart: %s\n", filename.c_str());
+    Serial.printf("%s", (const char*)data);
+    if(final)
+      Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index+len);
+  });
+  server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
+    if(!index)
+      Serial.printf("BodyStart: %u\n", total);
+    Serial.printf("%s", (const char*)data);
+    if(index + len == total)
+      Serial.printf("BodyEnd: %u\n", total);
+  });
+  server.begin();
 	Serial.println("HTTP server started");
 
 
@@ -317,10 +354,18 @@ void setup() {
   MDNS.addService("http", "tcp", 80);
 
 
+//////////////  WEB SOCKET INIT  ////////////////
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+
+
 /////////////  CLEAN UP SETUP  /////////////
 	EEPROM.end();
 }
 
 
 /////////////  LOOP  /////////////
-void loop() { chkSrvr(); }
+void loop() {
+  if(firmUpdateReq) do_firmware_update(firmUpdateReq);
+  if(fsUpdateReq)    do_spiffs_update(fsUpdateReq);
+}

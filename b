@@ -1,15 +1,14 @@
 set -e
 
 cd ~/dev/p2/app
-rm scripts/*.gz
-cp index.html scripts
+rm -rf scripts/*
 au build
 rm scripts/*.map
 gzip -r scripts
-cp scripts/* ~/dev/p2/arduino/xy/data
+cp index.html ~/dev/p2/arduino/xy/data
+cp -a scripts/* ~/dev/p2/arduino/xy/data/scripts
 
 cd ~/dev/p2/arduino/xy
 pio run -t buildfs
-echo "******** AU build done *********"
 
-curl http://192.168.1.235/upload --data-binary -d data/eridien-logo.jpg
+# curl http://192.168.1.235/upload --data-binary -d data/eridien-logo.jpg
