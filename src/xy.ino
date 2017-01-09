@@ -17,6 +17,7 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 char ap_ssid[33];
 char ap_pwd[33];
+File fileUpload;
 
 
 //////////////////  WEB SOCKET  //////////////////
@@ -269,26 +270,80 @@ void setup() {
 
 
 /////////////  SERVER  /////////////
-  // server.addHandler(new SPIFFSEditor(http_username,http_password));
+  server.addHandler(new SPIFFSEditor("admin","admin"));
   server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
   });
   server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
-    firmUpdateReq = request;;
+    firmUpdateReq = request;
   });
   server.on("/fs", HTTP_GET, [](AsyncWebServerRequest *request){
-    fsUpdateReq = request;;
+    fsUpdateReq = request;
   });
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
-    Serial.println("Upload1 ");
     request->send(200);
   }, [](AsyncWebServerRequest *request, const String& filename,
         size_t index, uint8_t *data, size_t len, bool final){
-    Serial.println("Upload2 " + filename);
-    if(!index)
+    if(!index) {
+      if (fileUpload) {
+        request->send(404);
+        return;
+      }
       Serial.println("Upload Start: " + filename);
-    if(final)
+
+      if(request->method() == HTTP_GET)
+        Serial.printf("GET");
+      else if(request->method() == HTTP_POST)
+        Serial.printf("POST");
+      else if(request->method() == HTTP_DELETE)
+        Serial.printf("DELETE");
+      else if(request->method() == HTTP_PUT)
+        Serial.printf("PUT");
+      else if(request->method() == HTTP_PATCH)
+        Serial.printf("PATCH");
+      else if(request->method() == HTTP_HEAD)
+        Serial.printf("HEAD");
+      else if(request->method() == HTTP_OPTIONS)
+        Serial.printf("OPTIONS");
+      else
+        Serial.printf("UNKNOWN");
+      Serial.printf(" http://%s%s\n", request->host().c_str(), request->url().c_str());
+
+      if(request->contentLength()){
+        Serial.printf("_CONTENT_TYPE: %s\n", request->contentType().c_str());
+        Serial.printf("_CONTENT_LENGTH: %u\n", request->contentLength());
+      }
+
+      int headers = request->headers();
+      int i;
+      for(i=0;i<headers;i++){
+        AsyncWebHeader* h = request->getHeader(i);
+        Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
+      }
+
+      String fname;
+      int params = request->params();
+      for(i=0;i<params;i++){
+        AsyncWebParameter* p = request->getParam(i);
+        if(p->isFile()){
+          Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
+        } else if(p->isPost()){
+          if(p->name() == "filename") fname = p->value();
+          Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        } else {
+          Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
+        }
+      }
+      if(!fname) fname = filename;
+      fileUpload = SPIFFS.open(fname.startsWith("/") ?
+                               fname : "/" + fname, "w");
+    }
+    if(len) fileUpload.write(data, len);
+    if(final) {
+      fileUpload.close();
+      fileUpload = (File) 0;
       Serial.println("Upload End: " + filename + ", " + (index+len));
+    }
   });
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
