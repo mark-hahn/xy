@@ -12,14 +12,7 @@ cp -a scripts/* ~/dev/p2/arduino/xy/data/scripts
 cd ~/dev/p2/arduino/xy
 pio run -t buildfs
 
-curl -F 'filename=/index.html'                    \
-     -F 'file=@data/index.html'                    http://192.168.1.235/upload
-
-curl -F 'filename=scripts/app-bundle.js.gz'      \
-     -F 'file=@data/scripts/app-bundle.js.gz'      http://192.168.1.235/upload
-
-curl -F 'filename=scripts/app-bundle.js.map.gz'  \
-     -F 'file=@data/scripts/app-bundle.js.map.gz'  http://192.168.1.235/upload
-
-curl -F 'filename=scripts/vendor-bundle.js.gz'   \
-     -F 'file=@data/scripts/vendor-bundle.js.gz'   http://192.168.1.235/upload
+ud index.html
+ud scripts/app-bundle.js.gz
+ud scripts/app-bundle.js.map.gz
+ud scripts/vendor-bundle.js.gz

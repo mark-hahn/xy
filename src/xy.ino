@@ -10,15 +10,14 @@
 #include <FS.h>
 #include <SPIFFSEditor.h>
 #include <Hash.h>
-
-// #include <DNSServer.h>
+#include <DNSServer.h>
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 char ap_ssid[33];
 char ap_pwd[33];
 File fileUpload;
-
+DNSServer dnsServer;
 
 //////////////////  WEB SOCKET  //////////////////
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
@@ -156,6 +155,7 @@ void led_off() {digitalWrite(2, 1);}
 */
 #define EEPROM_BYTES_OFS      68
 #define EEPROM_BYTES_PER_SSID 70
+#define EEPROM_TOTAL_BYTES    348
 
 void initeeprom() {
 	char buf[33];
@@ -167,12 +167,13 @@ void initeeprom() {
 										String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
 		EEPROM.write(0, 0xed);
 		EEPROM.write(1, 0xde);
-		for (eeAddr=2; eeAddr<348; eeAddr++) { EEPROM.write(eeAddr, 0); }
+		for (eeAddr=2; eeAddr<EEPROM_TOTAL_BYTES; eeAddr++) { EEPROM.write(eeAddr, 0); }
 
 	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 		ap_ssid_str.toCharArray(buf, 33);
 		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+2, buf[bufidx]);
 		EEPROM.write(bufidx+2, 0);
+    Serial.println("ap_ssid_str " + ap_ssid_str);
 
     String("eridien").toCharArray(buf, 33);
 		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+35, buf[bufidx]);
@@ -182,8 +183,8 @@ void initeeprom() {
 	}
 }
 int eepromGetStr(char* res, int idx){
-	int i=0;
-	do { res[i] = EEPROM.read(idx); i++; idx++;} while (res[i]);
+  int i = 0; uint8_t byt;
+	do {res[i] = byt = EEPROM.read(idx+i); i++;} while (byt);
 	return idx+33;
 }
 int eepromGetIP(IPAddress res, int idx){
@@ -196,7 +197,6 @@ int eepromGetIP(IPAddress res, int idx){
 /////////////  STA SETUP  /////////////
 char sta_ssid[33];
 char sta_pwd[33];
-char hostName[33];
 int best_quality = -1;
 
 int find_and_connect_STA() {
@@ -224,12 +224,13 @@ int find_and_connect_STA() {
 		best_quality = 101;
 		// return 0;
 	}
-	Serial.println("Connecting to AP " + String(sta_ssid) + " with quality " + best_quality);
+	Serial.println("Connecting to AP " + String(sta_ssid) +
+                 " with quality " + best_quality);
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ap_ssid);
   WiFi.begin(sta_ssid, sta_pwd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.printf("STA: Failed!\n");
+    Serial.println("STA connection failed");
     WiFi.disconnect(false);
     delay(1000);
     WiFi.begin(sta_ssid, sta_pwd);
@@ -245,10 +246,9 @@ void setup() {
 
 	Serial.begin(115200);
 	Serial.println(String("\n\nApp Start -- ") + VERSION);
-	Serial.println(String("FreeSketchSpace: ") + ESP.getFreeSketchSpace());
+	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
 
 	initeeprom();
-
 	pinMode(2, OUTPUT);
 	SPIFFS.begin();
 
@@ -259,14 +259,13 @@ void setup() {
 
 	Serial.println(String("Configuring access point: ") + ap_ssid);
 	WiFi.softAP(ap_ssid, ap_pwd);
-	IPAddress apIP  = WiFi.softAPIP();
-	Serial.println(String("AP address: ") + apIP);
+	Serial.println(String("AP address: ") + WiFi.softAPIP().toString());
 
 
 /////////////  DNS  /////////////
-	// const byte DNS_PORT = 53;
-	// dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
-	// dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+	const byte DNS_PORT = 53;
+	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
 
 
 /////////////  SERVER  /////////////
@@ -290,53 +289,14 @@ void setup() {
         return;
       }
       Serial.println("Upload Start: " + filename);
-
-      if(request->method() == HTTP_GET)
-        Serial.printf("GET");
-      else if(request->method() == HTTP_POST)
-        Serial.printf("POST");
-      else if(request->method() == HTTP_DELETE)
-        Serial.printf("DELETE");
-      else if(request->method() == HTTP_PUT)
-        Serial.printf("PUT");
-      else if(request->method() == HTTP_PATCH)
-        Serial.printf("PATCH");
-      else if(request->method() == HTTP_HEAD)
-        Serial.printf("HEAD");
-      else if(request->method() == HTTP_OPTIONS)
-        Serial.printf("OPTIONS");
-      else
-        Serial.printf("UNKNOWN");
-      Serial.printf(" http://%s%s\n", request->host().c_str(), request->url().c_str());
-
-      if(request->contentLength()){
-        Serial.printf("_CONTENT_TYPE: %s\n", request->contentType().c_str());
-        Serial.printf("_CONTENT_LENGTH: %u\n", request->contentLength());
-      }
-
-      int headers = request->headers();
-      int i;
-      for(i=0;i<headers;i++){
-        AsyncWebHeader* h = request->getHeader(i);
-        Serial.printf("_HEADER[%s]: %s\n", h->name().c_str(), h->value().c_str());
-      }
-
-      String fname;
-      int params = request->params();
-      for(i=0;i<params;i++){
+      String fname = "";
+      int i, numParams = request->params();
+      for(i=0; i < numParams; i++){
         AsyncWebParameter* p = request->getParam(i);
-        if(p->isFile()){
-          Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
-        } else if(p->isPost()){
-          if(p->name() == "filename") fname = p->value();
-          Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-        } else {
-          Serial.printf("_GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
-        }
+        if(p->isPost() && p->name() == "filename") fname = p->value();
       }
-      if(!fname) fname = filename;
-      fileUpload = SPIFFS.open(fname.startsWith("/") ?
-                               fname : "/" + fname, "w");
+      if(fname.length() == 0) fname = filename;
+      fileUpload = SPIFFS.open(fname.startsWith("/") ? fname : "/" + fname, "w");
     }
     if(len) fileUpload.write(data, len);
     if(final) {
@@ -384,5 +344,6 @@ void setup() {
 /////////////  LOOP  /////////////
 void loop() {
   if(firmUpdateReq) do_firmware_update(firmUpdateReq);
-  if(fsUpdateReq)    do_spiffs_update(fsUpdateReq);
+  if(fsUpdateReq)   do_spiffs_update(fsUpdateReq);
+  dnsServer.processNextRequest();
 }
