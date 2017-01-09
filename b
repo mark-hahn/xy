@@ -4,7 +4,6 @@ set -e
 cd ~/dev/p2/app
 rm -rf scripts/*
 au build
-#rm scripts/*.map
 gzip -r scripts
 cp index.html ~/dev/p2/arduino/xy/data
 cp -a scripts/* ~/dev/p2/arduino/xy/data/scripts

@@ -270,8 +270,9 @@ void setup() {
 
 /////////////  SERVER  /////////////
   server.addHandler(new SPIFFSEditor("admin","admin"));
-  server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/plain", String(ESP.getFreeHeap()));
+  server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.println("generate_204: " + request->url());
+    request->send(200, "text/plain", "Hello 204");
   });
   server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
     firmUpdateReq = request;
