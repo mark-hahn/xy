@@ -249,10 +249,8 @@ void find_and_connect() {
 AsyncWebServerRequest *ssidRequest;
 void do_ssids(AsyncWebServerRequest *request) {
   ssidRequest = (AsyncWebServerRequest*) 0;
-
 	int ssidCount = WiFi.scanNetworks();
   Serial.println(String("\nWifi scan found ") + ssidCount + " ssids");
-
   String json = "[";
   int ssidIdx;
   for(ssidIdx=0; ssidIdx<ssidCount; ssidIdx++) {
@@ -270,7 +268,6 @@ void do_ssids(AsyncWebServerRequest *request) {
              (ssidIdx == ssidCount-1 ? "" : ",");
 	}
   json += "]";
-  Serial.println(json);
   request->send(200, "text/json", json);
 }
 
@@ -309,7 +306,15 @@ void setup() {
 
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("generate_204: " + request->url());
-    request->send(200, "text/plain", "Hello 204");
+    request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
+                        "<p>Use <b>xy.local</b> or <b>192.168.4.1</b> "       +
+                        "to access the XY application when using the WiFi access point <b>"  +
+                         String(ap_ssid) + "</b> you are using now. </p>"       +
+                        "<p>When using your normal WiFi access point, use <b>xy.local</b>"     +
+         (sta_ssid[0] ? " or <b>" + WiFi.localIP().toString() + "</b>." :
+                        String(". If <b>xy.local</b> does not work, you will need to ") +
+                        "find the XY ip address.  See the documentation.")    +
+                        "</p></div></center>");
   });
 
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
