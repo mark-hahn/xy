@@ -1,6 +1,6 @@
 
 
-#define VERSION "version 7"
+#define VERSION "version 0.1"
 
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -194,12 +194,13 @@ int eepromGetIP(IPAddress res, int idx){
 }
 
 
-/////////////  STA SETUP  /////////////
+/////////////  AP & STA SETUP  /////////////
 char sta_ssid[33];
 char sta_pwd[33];
 int best_quality = -1;
 
-int find_and_connect_STA() {
+void find_and_connect() {
+  led_on();
 	int n = WiFi.scanNetworks(), i, j, eepromIdx;
 	char eeprom_ssid[33];
 	Serial.println(String("\nWifi scan found ") + n + " ssids");
@@ -222,12 +223,14 @@ int find_and_connect_STA() {
 		strcpy(sta_ssid, "hahn-fi");
 		strcpy(sta_pwd, "NBVcvbasd987");
 		best_quality = 101;
-		// return 0;
 	}
+  eepromGetStr(ap_ssid, 2);
+  eepromGetStr(ap_pwd, 35);
 	Serial.println("Connecting to AP " + String(sta_ssid) +
-                 " with quality " + best_quality);
+                 ", quality " + best_quality);
+
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(ap_ssid);
+  WiFi.softAP(ap_ssid, ap_pwd);
   WiFi.begin(sta_ssid, sta_pwd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("STA connection failed");
@@ -235,8 +238,9 @@ int find_and_connect_STA() {
     delay(1000);
     WiFi.begin(sta_ssid, sta_pwd);
   }
+	Serial.println(String("AP  address: ") + WiFi.softAPIP().toString());
+	Serial.println(String("STA address: ") + WiFi.localIP().toString());
 	led_off();
-	return 1;
 }
 
 
@@ -251,15 +255,6 @@ void setup() {
 	initeeprom();
 	pinMode(2, OUTPUT);
 	SPIFFS.begin();
-
-
-/////////////  AP  /////////////
-	eepromGetStr(ap_ssid, 2);
-	eepromGetStr(ap_pwd, 35);
-
-	Serial.println(String("Configuring access point: ") + ap_ssid);
-	WiFi.softAP(ap_ssid, ap_pwd);
-	Serial.println(String("AP address: ") + WiFi.softAPIP().toString());
 
 
 /////////////  DNS  /////////////
@@ -322,10 +317,9 @@ void setup() {
 	Serial.println("HTTP server started");
 
 
-/////////////  STA  /////////////
-	if (find_and_connect_STA()) {
-		Serial.println("Connected as station " + WiFi.localIP().toString());
-  }
+/////////////  AP & STA  /////////////
+	find_and_connect();
+
 
 /////////////  MDNS  /////////////
   MDNS.begin("xy");
