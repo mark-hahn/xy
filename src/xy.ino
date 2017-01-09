@@ -19,6 +19,7 @@ char ap_pwd[33];
 File fileUpload;
 DNSServer dnsServer;
 
+
 //////////////////  WEB SOCKET  //////////////////
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
@@ -244,6 +245,36 @@ void find_and_connect() {
 }
 
 
+//////////////////////  AJAX  /////////////////////
+AsyncWebServerRequest *ssidRequest;
+void do_ssids(AsyncWebServerRequest *request) {
+  ssidRequest = (AsyncWebServerRequest*) 0;
+
+	int ssidCount = WiFi.scanNetworks();
+  Serial.println(String("\nWifi scan found ") + ssidCount + " ssids");
+
+  String json = "[";
+  int ssidIdx;
+  for(ssidIdx=0; ssidIdx<ssidCount; ssidIdx++) {
+    json += "{\"ssid\":\"" + WiFi.SSID(ssidIdx)  + "\"," +
+             "\"encryptionType\":\"";
+    switch (WiFi.encryptionType(ssidIdx)) {
+      case 2:  json += "TKIP (WPA)";  break;
+      case 5:  json += "WEP";         break;
+      case 4:  json += "CCMP (WPA)";  break;
+      case 7:  json += "NONE";        break;
+      case 8:  json += "AUTO";        break;
+      default: json += "UNKNOWN";
+    }
+    json += String("\",") + "\"rssi\":" + WiFi.RSSI(ssidIdx)  + "}" +
+             (ssidIdx == ssidCount-1 ? "" : ",");
+	}
+  json += "]";
+  Serial.println(json);
+  request->send(200, "text/json", json);
+}
+
+
 /////////////  SETUP  /////////////
 void setup() {
 	delay(1000);
@@ -265,16 +296,22 @@ void setup() {
 
 /////////////  SERVER  /////////////
   server.addHandler(new SPIFFSEditor("admin","admin"));
-  server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("generate_204: " + request->url());
-    request->send(200, "text/plain", "Hello 204");
-  });
+
   server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
     firmUpdateReq = request;
   });
   server.on("/fs", HTTP_GET, [](AsyncWebServerRequest *request){
     fsUpdateReq = request;
   });
+  server.on("/ssids", HTTP_GET, [](AsyncWebServerRequest *request){
+    ssidRequest = request;
+  });
+
+  server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
+    Serial.println("generate_204: " + request->url());
+    request->send(200, "text/plain", "Hello 204");
+  });
+
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
     request->send(200);
   }, [](AsyncWebServerRequest *request, const String& filename,
@@ -301,6 +338,7 @@ void setup() {
       Serial.println("Upload End: " + filename + ", " + (index+len));
     }
   });
+
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
     if(!index)
@@ -309,10 +347,12 @@ void setup() {
     if(index + len == total)
       Serial.printf("BodyEnd: %u\n", total);
   });
+
   server.onNotFound([](AsyncWebServerRequest *request){
     Serial.println("File not found: " + request->url());
     request->send(404);
   });
+
   server.begin();
 	Serial.println("HTTP server started");
 
@@ -340,5 +380,6 @@ void setup() {
 void loop() {
   if(firmUpdateReq) do_firmware_update(firmUpdateReq);
   if(fsUpdateReq)   do_spiffs_update(fsUpdateReq);
+  if(ssidRequest)   do_ssids(ssidRequest);
   dnsServer.processNextRequest();
 }
