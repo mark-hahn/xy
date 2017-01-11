@@ -249,18 +249,17 @@ void find_and_connect() {
   eepromGetStr(ap_pwd, 35);
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ap_ssid, ap_pwd);
-	Serial.println(String("AP running\n") +
-                 "Connecting to AP " + sta_ssid +
-                  ", quality " + best_quality);
-  WiFi.begin(sta_ssid, sta_pwd);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-    Serial.println("STA connection failed");
-    WiFi.disconnect(false);
-    delay(1000);
-    WiFi.begin(sta_ssid, sta_pwd);
-  }
+	Serial.println(String("AP running\n") + "Connecting to AP " + sta_ssid +
+                                          ", quality " + best_quality);
+  // WiFi.begin(sta_ssid, sta_pwd);
+  // if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+  //   Serial.println("STA connection failed");
+  //   WiFi.disconnect(false);
+  //   delay(1000);
+  //   WiFi.begin(sta_ssid, sta_pwd);
+  // }
 	Serial.println(String("AP  address: ") + WiFi.softAPIP().toString());
-	Serial.println(String("STA address: ") + WiFi.localIP().toString());
+	// Serial.println(String("STA address: ") + WiFi.localIP().toString());
 	ledBlink(false);
 }
 
