@@ -168,25 +168,25 @@ void ledBlink(bool turnBlinkOn) {
   2  Magic = 0xedde
   33 AP ssid name
   33 AP password
-	4 STA choices (70 each)
+	4 STA choices (82 each)
 		 33 ssid
 		 33 pwd
-		 4  static ip
-	348 bytes total
+		 16 static ip (as str)
+	396 bytes total
 */
 #define EEPROM_BYTES_OFS      68
-#define EEPROM_BYTES_PER_SSID 70
-#define EEPROM_TOTAL_BYTES    348
+#define EEPROM_BYTES_PER_SSID 82
+#define EEPROM_TOTAL_BYTES    396
 
 void initeeprom() {
 	char buf[33];
 	int bufidx, eeAddr;
 	String ap_ssid_str;
   EEPROM.begin(512);
-	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
+	if (EEPROM.read(0) != 0xe7 || EEPROM.read(1) != 0xde) {
     Serial.println("initializing empty eeprom, magic was: " +
                     String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
-		EEPROM.write(0, 0xed);
+		EEPROM.write(0, 0xe7);
 		EEPROM.write(1, 0xde);
 		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
     EEPROM.end();
@@ -197,35 +197,32 @@ void initeeprom() {
 	}
   EEPROM.end();
 }
-int eepromGetStr(char* res, int idx){
+
+int eepromGetStrWLen(char* res, int idx, int len){
   EEPROM.begin(512);
   int i = 0; char chr;
 	do { chr = EEPROM.read(idx+i); res[i] = chr; i++; } while (chr);
   EEPROM.end();
-	return idx+33;
+	return idx+len;
 }
-int eepromGetIP(IPAddress res, int idx){
-  EEPROM.begin(512);
-	int i;
-	for(i=0; i<4; i++) res[i] = EEPROM.read(idx+i);
-  EEPROM.end();
-	return idx+4;
+int eepromGetStr(char* res, int idx){
+  return eepromGetStrWLen(res, idx, 33);
 }
-int eepromPutStr(const char* str, int idx){
+int eepromGetIP(char* res, int idx){
+  return eepromGetStrWLen(res, idx, 16);
+}
+int eepromPutStrLen(const char* str, int idx, int len){
   EEPROM.begin(512);
   int i = 0; char chr;
 	do {EEPROM.write(idx+i, chr=str[i]); i++;} while (chr);
   EEPROM.end();
-	return idx+33;
+	return idx+len;
 }
-int eepromPutIP(const char* ipStr, int idx){
-  IPAddress ip;
-  if(ip.fromString(ipStr)) {
-    EEPROM.begin(512);
-  	int i; for(i=0; i<4; i++) EEPROM.write(idx+i, ip[i]);
-    EEPROM.end();
-  }
-	return idx+4;
+int eepromPutStr(const char* ipStr, int idx) {
+  return eepromPutStrLen(ipStr, idx, 33);
+}
+int eepromPutIp(const char* ipStr, int idx) {
+  return eepromPutStrLen(ipStr, idx, 16);
 }
 
 
@@ -326,7 +323,6 @@ AsyncWebServerRequest *eepromssidRequest;
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
-  IPAddress ip;
   eepromGetStr(str, 2);
   String json = String("[{\"apSsid\":\"") + str + "\",";
   eepromGetStr(str, 35);
@@ -337,8 +333,8 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     json += String("{\"ssid\":\"") + str  + "\",";
     eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
     json += String("\"password\":\"") + str  + "\",";
-    eepromGetIP(ip, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
-    json += String("\"staticIp\":\"") + ip.toString()  + "\"}" +
+    eepromGetIP(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
+    json += String("\"staticIp\":\"") + str + "\"}" +
                                      (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";
@@ -351,43 +347,52 @@ void do_eepromssids(AsyncWebServerRequest *request) {
 }
 String eepromssidData;
 void eepromssidPost() {
-  Serial.println(String("starting to parse: ") + eepromssidData);
   const size_t bufferSize = JSON_ARRAY_SIZE(5) + JSON_OBJECT_SIZE(2) +
                                                4*JSON_OBJECT_SIZE(3);
   DynamicJsonBuffer jsonBuffer(bufferSize);
   JsonArray& root = jsonBuffer.parseArray(eepromssidData);
-
-  const char* root_apSsid = root[0]["apSsid"]; // "eridien_XY_c3b2f0"
-  const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
-
-  Serial.println(root_apSsid);
-  Serial.println(root_apPwd);
-
-  eepromPutStr(root_apSsid, 2);
-  eepromPutStr(root_apPwd,  35);
-
-  // const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
-  // JsonObject& 1 = root[1];
-  // const char* 1_ssid = 1["ssid"]; // ""
-  // const char* 1_password = 1["password"]; // ""
-  // const char* 1_staticIp = 1["staticIp"]; // ""
-  // JsonObject& 2 = root[2];
-  // const char* 2_ssid = 2["ssid"]; // ""
-  // const char* 2_password = 2["password"]; // ""
-  // const char* 2_staticIp = 2["staticIp"]; // ""
-  // JsonObject& 3 = root[3];
-  // const char* 3_ssid = 3["ssid"]; // ""
-  // const char* 3_password = 3["password"]; // ""
-  // const char* 3_staticIp = 3["staticIp"]; // ""
-  // JsonObject& 4 = root[4];
-  // const char* 4_ssid = 4["ssid"]; // ""
-  // const char* 4_password = 4["password"]; // ""
-  // const char* 4_staticIp = 4["staticIp"]; // ""
-  Serial.println("done parsing");
   if (!root.success()) {
     Serial.println("parse failed");
     return;
   }
+  int eeIdx = 2;
+
+  const char* root_apSsid = root[0]["apSsid"]; // "eridien_XY_c3b2f0"
+  eeIdx = eepromPutStr(root_apSsid, eeIdx);
+  const char* root_apPwd  = root[0]["apPwd"]; // "eridienxy"
+  eeIdx = eepromPutStr(root_apPwd,  eeIdx);
+
+  JsonObject& a = root[1];
+  const char* ssid1      = a["ssid"];
+  const char* password1  = a["password"];
+  const char* staticIp1  = a["staticIp"];
+  eeIdx = eepromPutStr(ssid1,     eeIdx);
+  eeIdx = eepromPutStr(password1, eeIdx);
+  eeIdx = eepromPutIp(staticIp1,  eeIdx);
+
+  JsonObject& b = root[2];
+  const char* ssid2      = b["ssid"];
+  const char* password2  = b["password"];
+  const char* staticIp2  = b["staticIp"];
+  eeIdx = eepromPutStr(ssid2,     eeIdx);
+  eeIdx = eepromPutStr(password2, eeIdx);
+  eeIdx = eepromPutIp(staticIp2,  eeIdx);
+
+  JsonObject& c = root[3];
+  const char* ssid3      = c["ssid"];
+  const char* password3  = c["password"];
+  const char* staticIp3  = c["staticIp"];
+  eeIdx = eepromPutStr(ssid3,     eeIdx);
+  eeIdx = eepromPutStr(password3, eeIdx);
+  eeIdx = eepromPutIp(staticIp3,  eeIdx);
+
+  JsonObject& d = root[4];
+  const char* ssid4      = d["ssid"];
+  const char* password4  = d["password"];
+  const char* staticIp4  = d["staticIp"];
+  eeIdx = eepromPutStr(ssid4,     eeIdx);
+  eeIdx = eepromPutStr(password4, eeIdx);
+  eeIdx = eepromPutIp(staticIp4,  eeIdx);
 }
 
 
