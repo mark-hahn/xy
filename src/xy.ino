@@ -11,6 +11,7 @@
 #include <SPIFFSEditor.h>
 #include <Hash.h>
 #include <DNSServer.h>
+#include <os_type.h>
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -139,8 +140,26 @@ void do_spiffs_update(AsyncWebServerRequest *request) {
 
 
 /////////////  LEDS  /////////////
+os_timer_t ledTimer;
+bool ledBlinking;
+bool blinkLedIsOn;
 void led_on()  {digitalWrite(2, 0);}
 void led_off() {digitalWrite(2, 1);}
+void ledBlinkCallback(void *pArg) {
+  blinkLedIsOn = !blinkLedIsOn;
+  if(blinkLedIsOn) led_on();
+  else             led_off();
+}
+void ledBlink(bool turnBlinkOn) {
+  if(!ledBlinking && turnBlinkOn) {
+    ledBlinking = true;
+    os_timer_arm(&ledTimer, 100, true);
+  } else if (ledBlinking && !turnBlinkOn) {
+    os_timer_disarm(&ledTimer);
+    ledBlinking = false;
+    led_off();
+  }
+}
 
 
 /////////////  EEPROM  /////////////
@@ -168,29 +187,30 @@ void initeeprom() {
 										String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
 		EEPROM.write(0, 0xed);
 		EEPROM.write(1, 0xde);
-		for (eeAddr=2; eeAddr<EEPROM_TOTAL_BYTES; eeAddr++) { EEPROM.write(eeAddr, 0); }
-
+		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) {
+      EEPROM.write(eeAddr, 0);
+    }
 	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 		ap_ssid_str.toCharArray(buf, 33);
 		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+2, buf[bufidx]);
-		EEPROM.write(bufidx+2, 0);
-    Serial.println("ap_ssid_str " + ap_ssid_str);
 
     String("eridien").toCharArray(buf, 33);
 		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+35, buf[bufidx]);
-		EEPROM.write(bufidx+35, 0);
-		EEPROM.commit();
-		Serial.println("initialized eeprom");
+		EEPROM.end();
 	}
 }
 int eepromGetStr(char* res, int idx){
-  int i = 0; uint8_t byt;
-	do {res[i] = byt = EEPROM.read(idx+i); i++;} while (byt);
+  EEPROM.begin(512);
+  int i = 0; char chr;
+	do { chr = EEPROM.read(idx+i); res[i] = chr; i++; } while (chr);
+  EEPROM.end();
 	return idx+33;
 }
 int eepromGetIP(IPAddress res, int idx){
+  EEPROM.begin(512);
 	int i;
 	for(i=0; i<4; i++) res[i] = EEPROM.read(idx+i);
+  EEPROM.end();
 	return idx+4;
 }
 
@@ -201,7 +221,7 @@ char sta_pwd[33];
 int best_quality = -1;
 
 void find_and_connect() {
-  led_on();
+  ledBlink(true);
 	int n = WiFi.scanNetworks(), i, j, eepromIdx;
 	char eeprom_ssid[33];
 	Serial.println(String("\nWifi scan found ") + n + " ssids");
@@ -227,11 +247,11 @@ void find_and_connect() {
 	}
   eepromGetStr(ap_ssid, 2);
   eepromGetStr(ap_pwd, 35);
-	Serial.println("Connecting to AP " + String(sta_ssid) +
-                 ", quality " + best_quality);
-
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ap_ssid, ap_pwd);
+	Serial.println(String("AP running\n") +
+                 "Connecting to AP " + sta_ssid +
+                  ", quality " + best_quality);
   WiFi.begin(sta_ssid, sta_pwd);
   if (WiFi.waitForConnectResult() != WL_CONNECTED) {
     Serial.println("STA connection failed");
@@ -241,11 +261,19 @@ void find_and_connect() {
   }
 	Serial.println(String("AP  address: ") + WiFi.softAPIP().toString());
 	Serial.println(String("STA address: ") + WiFi.localIP().toString());
-	led_off();
+	ledBlink(false);
 }
 
 
 //////////////////////  AJAX  /////////////////////
+void responseOK(AsyncWebServerRequest *request) {
+  AsyncWebServerResponse *response =
+      request->beginResponse(200, "text/plain", "OK");
+  response->addHeader("Access-Control-Allow-Origin","*");
+  response->addHeader("Access-Control-Allow-Methods", "POST");
+  response->addHeader("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+  request->send(response);
+}
 AsyncWebServerRequest *ssidRequest;
 void do_ssids(AsyncWebServerRequest *request) {
   ssidRequest = (AsyncWebServerRequest*) 0;
@@ -268,6 +296,39 @@ void do_ssids(AsyncWebServerRequest *request) {
              (ssidIdx == ssidCount-1 ? "" : ",");
 	}
   json += "]";
+  AsyncWebServerResponse *response =
+      request->beginResponse(200, "text/json", json);
+  response->addHeader("Access-Control-Allow-Origin","*");
+  request->send(response);
+
+  request->send(200, "text/json", json);
+}
+
+AsyncWebServerRequest *eepromssidRequest;
+void do_eepromssids(AsyncWebServerRequest *request) {
+  eepromssidRequest = (AsyncWebServerRequest*) 0;
+  char str[33];
+  IPAddress ip;
+  eepromGetStr(str, 2);
+  String json = String("[{\"apSsid\":\"") + str + "\",";
+  eepromGetStr(str, 35);
+  json += String("\"apPwd\":\"") + str + "\"},";
+  int ssidIdx;
+  for(ssidIdx=0; ssidIdx<4; ssidIdx++) {
+    eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID);
+    json += String("{\"ssid\":\"") + str  + "\",";
+    eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
+    json += String("\"password\":\"") + str  + "\",";
+    eepromGetIP(ip, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
+    json += String("\"staticIp\":\"") + ip.toString()  + "\"}" +
+                                     (ssidIdx == 3 ? "" : ",");
+	}
+  json += "]";
+  AsyncWebServerResponse *response =
+      request->beginResponse(200, "text/json", json);
+  response->addHeader("Access-Control-Allow-Origin","*");
+  request->send(response);
+
   request->send(200, "text/json", json);
 }
 
@@ -277,12 +338,13 @@ void setup() {
 	delay(1000);
 
 	Serial.begin(115200);
-	Serial.println(String("\n\nApp Start -- ") + VERSION);
+	Serial.println(String("\n\nXY Control App Starting -- ") + VERSION);
 	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
 
 	initeeprom();
 	pinMode(2, OUTPUT);
 	SPIFFS.begin();
+  os_timer_setfn(&ledTimer, ledBlinkCallback, NULL);
 
 
 /////////////  DNS  /////////////
@@ -302,6 +364,20 @@ void setup() {
   });
   server.on("/ssids", HTTP_GET, [](AsyncWebServerRequest *request){
     ssidRequest = request;
+  });
+
+  server.on("/setssids", HTTP_OPTIONS, responseOK);
+  server.on("/setssids", HTTP_POST, responseOK, 0,
+    [](AsyncWebServerRequest *request,
+            uint8_t *data, size_t len, size_t index, size_t total) {
+    if(!index) Serial.printf("BodyStart: %u\n", total);
+    Serial.printf("%s", (const char*) data);
+    if(index + len == total) Serial.printf("BodyEnd: %u\n", total);
+    Serial.println("body handler done");
+  });
+
+  server.on("/eepromssids", HTTP_GET, [](AsyncWebServerRequest *request){
+    eepromssidRequest = request;
   });
 
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -345,13 +421,6 @@ void setup() {
   });
 
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
-  server.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
-    if(!index)
-      Serial.printf("BodyStart: %u\n", total);
-    Serial.printf("%s", (const char*)data);
-    if(index + len == total)
-      Serial.printf("BodyEnd: %u\n", total);
-  });
 
   server.onNotFound([](AsyncWebServerRequest *request){
     Serial.println("File not found: " + request->url());
@@ -383,8 +452,10 @@ void setup() {
 
 /////////////  LOOP  /////////////
 void loop() {
-  if(firmUpdateReq) do_firmware_update(firmUpdateReq);
-  if(fsUpdateReq)   do_spiffs_update(fsUpdateReq);
-  if(ssidRequest)   do_ssids(ssidRequest);
+  if(firmUpdateReq)     do_firmware_update(firmUpdateReq);
+  if(fsUpdateReq)       do_spiffs_update(fsUpdateReq);
+  if(ssidRequest)       do_ssids(ssidRequest);
+  if(eepromssidRequest) do_eepromssids(eepromssidRequest);
+
   dnsServer.processNextRequest();
 }
