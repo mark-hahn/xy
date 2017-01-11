@@ -12,6 +12,7 @@
 #include <Hash.h>
 #include <DNSServer.h>
 #include <os_type.h>
+#include <ArduinoJson.h>
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
@@ -181,23 +182,20 @@ void initeeprom() {
 	char buf[33];
 	int bufidx, eeAddr;
 	String ap_ssid_str;
-	EEPROM.begin(512);
+  EEPROM.begin(512);
 	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
-		Serial.println("initializing empty eeprom, magic was: " +
-										String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
+    Serial.println("initializing empty eeprom, magic was: " +
+                    String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
 		EEPROM.write(0, 0xed);
 		EEPROM.write(1, 0xde);
-		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) {
-      EEPROM.write(eeAddr, 0);
-    }
+		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
+    EEPROM.end();
 	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 		ap_ssid_str.toCharArray(buf, 33);
-		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+2, buf[bufidx]);
-
-    String("eridien").toCharArray(buf, 33);
-		for(bufidx=0; buf[bufidx]; bufidx++) EEPROM.write(bufidx+35, buf[bufidx]);
-		EEPROM.end();
+    eepromPutStr(buf, 2);
+    eepromPutStr("eridienxy", 35);
 	}
+  EEPROM.end();
 }
 int eepromGetStr(char* res, int idx){
   EEPROM.begin(512);
@@ -211,6 +209,22 @@ int eepromGetIP(IPAddress res, int idx){
 	int i;
 	for(i=0; i<4; i++) res[i] = EEPROM.read(idx+i);
   EEPROM.end();
+	return idx+4;
+}
+int eepromPutStr(const char* str, int idx){
+  EEPROM.begin(512);
+  int i = 0; char chr;
+	do {EEPROM.write(idx+i, chr=str[i]); i++;} while (chr);
+  EEPROM.end();
+	return idx+33;
+}
+int eepromPutIP(const char* ipStr, int idx){
+  IPAddress ip;
+  if(ip.fromString(ipStr)) {
+    EEPROM.begin(512);
+  	int i; for(i=0; i<4; i++) EEPROM.write(idx+i, ip[i]);
+    EEPROM.end();
+  }
 	return idx+4;
 }
 
@@ -245,21 +259,26 @@ void find_and_connect() {
 		strcpy(sta_pwd, "NBVcvbasd987");
 		best_quality = 101;
 	}
+  ledBlink(false);
+  led_on();
   eepromGetStr(ap_ssid, 2);
   eepromGetStr(ap_pwd, 35);
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(ap_ssid, ap_pwd);
-	Serial.println(String("AP running\n") + "Connecting to AP " + sta_ssid +
-                                          ", quality " + best_quality);
-  // WiFi.begin(sta_ssid, sta_pwd);
-  // if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-  //   Serial.println("STA connection failed");
-  //   WiFi.disconnect(false);
-  //   delay(1000);
-  //   WiFi.begin(sta_ssid, sta_pwd);
-  // }
+  Serial.println(String("AP running: ") + ap_ssid);
+
+  ledBlink(true);
+	Serial.println(String("Connecting to AP ") + sta_ssid +
+                 ", quality " + best_quality);
+  WiFi.begin(sta_ssid, sta_pwd);
+  if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("STA connection failed");
+    WiFi.disconnect(false);
+    delay(1000);
+    WiFi.begin(sta_ssid, sta_pwd);
+  }
 	Serial.println(String("AP  address: ") + WiFi.softAPIP().toString());
-	// Serial.println(String("STA address: ") + WiFi.localIP().toString());
+	Serial.println(String("STA address: ") + WiFi.localIP().toString());
 	ledBlink(false);
 }
 
@@ -330,6 +349,46 @@ void do_eepromssids(AsyncWebServerRequest *request) {
 
   request->send(200, "text/json", json);
 }
+String eepromssidData;
+void eepromssidPost() {
+  Serial.println(String("starting to parse: ") + eepromssidData);
+  const size_t bufferSize = JSON_ARRAY_SIZE(5) + JSON_OBJECT_SIZE(2) +
+                                               4*JSON_OBJECT_SIZE(3);
+  DynamicJsonBuffer jsonBuffer(bufferSize);
+  JsonArray& root = jsonBuffer.parseArray(eepromssidData);
+
+  const char* root_apSsid = root[0]["apSsid"]; // "eridien_XY_c3b2f0"
+  const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
+
+  Serial.println(root_apSsid);
+  Serial.println(root_apPwd);
+
+  eepromPutStr(root_apSsid, 2);
+  eepromPutStr(root_apPwd,  35);
+
+  // const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
+  // JsonObject& 1 = root[1];
+  // const char* 1_ssid = 1["ssid"]; // ""
+  // const char* 1_password = 1["password"]; // ""
+  // const char* 1_staticIp = 1["staticIp"]; // ""
+  // JsonObject& 2 = root[2];
+  // const char* 2_ssid = 2["ssid"]; // ""
+  // const char* 2_password = 2["password"]; // ""
+  // const char* 2_staticIp = 2["staticIp"]; // ""
+  // JsonObject& 3 = root[3];
+  // const char* 3_ssid = 3["ssid"]; // ""
+  // const char* 3_password = 3["password"]; // ""
+  // const char* 3_staticIp = 3["staticIp"]; // ""
+  // JsonObject& 4 = root[4];
+  // const char* 4_ssid = 4["ssid"]; // ""
+  // const char* 4_password = 4["password"]; // ""
+  // const char* 4_staticIp = 4["staticIp"]; // ""
+  Serial.println("done parsing");
+  if (!root.success()) {
+    Serial.println("parse failed");
+    return;
+  }
+}
 
 
 /////////////  SETUP  /////////////
@@ -369,10 +428,17 @@ void setup() {
   server.on("/setssids", HTTP_POST, responseOK, 0,
     [](AsyncWebServerRequest *request,
             uint8_t *data, size_t len, size_t index, size_t total) {
-    if(!index) Serial.printf("BodyStart: %u\n", total);
-    Serial.printf("%s", (const char*) data);
-    if(index + len == total) Serial.printf("BodyEnd: %u\n", total);
-    Serial.println("body handler done");
+    if(!index) {
+      eepromssidData = String("");
+    }
+    char lastChar[2];
+    lastChar[0] = data[len-1]; lastChar[1] = 0;
+    data[len-1] = 0;
+    eepromssidData = eepromssidData + String((char*)data) + lastChar;
+    if(index + len == total) {
+      eepromssidPost();
+      eepromssidData = String("");
+    }
   });
 
   server.on("/eepromssids", HTTP_GET, [](AsyncWebServerRequest *request){
