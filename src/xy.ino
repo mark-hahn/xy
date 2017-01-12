@@ -4,280 +4,27 @@
 
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <ESP8266httpUpdate.h>
 #include <ESP8266mDNS.h>
-#include <EEPROM.h>
 #include <FS.h>
 #include <SPIFFSEditor.h>
 #include <Hash.h>
 #include <DNSServer.h>
-#include <os_type.h>
 #include <ArduinoJson.h>
+
+// includes needed for platformIO bug
+#include <EEPROM.h>
+#include <ESP8266httpUpdate.h>
+
+#include "xy-eeprom.h"
+#include "xy-websocket.h"
+#include "xy-updates.h"
+#include "xy-leds.h"
+#include "xy-wifi.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
-char ap_ssid[33];
-char ap_pwd[33];
 File fileUpload;
 DNSServer dnsServer;
-
-
-//////////////////  WEB SOCKET  //////////////////
-void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
-  if(type == WS_EVT_CONNECT){
-    Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
-    client->printf("Hello Client %u :)", client->id());
-    client->ping();
-  } else if(type == WS_EVT_DISCONNECT){
-    Serial.printf("ws[%s][%u] disconnect: %u\n", server->url(), client->id());
-  } else if(type == WS_EVT_ERROR){
-    Serial.printf("ws[%s][%u] error(%u): %s\n", server->url(), client->id(), *((uint16_t*)arg), (char*)data);
-  } else if(type == WS_EVT_PONG){
-    Serial.printf("ws[%s][%u] pong[%u]: %s\n", server->url(), client->id(), len, (len)?(char*)data:"");
-  } else if(type == WS_EVT_DATA){
-    AwsFrameInfo * info = (AwsFrameInfo*)arg;
-    String msg = "";
-    if(info->final && info->index == 0 && info->len == len){
-      //the whole message is in a single frame and we got all of it's data
-      Serial.printf("ws[%s][%u] %s-message[%llu]: ", server->url(), client->id(), (info->opcode == WS_TEXT)?"text":"binary", info->len);
-
-      if(info->opcode == WS_TEXT){
-        for(size_t i=0; i < info->len; i++) {
-          msg += (char) data[i];
-        }
-      } else {
-        char buff[3];
-        for(size_t i=0; i < info->len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
-          msg += buff ;
-        }
-      }
-      Serial.printf("%s\n",msg.c_str());
-
-      if(info->opcode == WS_TEXT)
-        client->text("I got your text message");
-      else
-        client->binary("I got your binary message");
-    } else {
-      //message is comprised of multiple frames or the frame is split into multiple packets
-      if(info->index == 0){
-        if(info->num == 0)
-          Serial.printf("ws[%s][%u] %s-message start\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
-        Serial.printf("ws[%s][%u] frame[%u] start[%llu]\n", server->url(), client->id(), info->num, info->len);
-      }
-
-      Serial.printf("ws[%s][%u] frame[%u] %s[%llu - %llu]: ", server->url(), client->id(), info->num, (info->message_opcode == WS_TEXT)?"text":"binary", info->index, info->index + len);
-
-      if(info->opcode == WS_TEXT){
-        for(size_t i=0; i < info->len; i++) {
-          msg += (char) data[i];
-        }
-      } else {
-        char buff[3];
-        for(size_t i=0; i < info->len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
-          msg += buff ;
-        }
-      }
-      Serial.printf("%s\n",msg.c_str());
-
-      if((info->index + len) == info->len){
-        Serial.printf("ws[%s][%u] frame[%u] end[%llu]\n", server->url(), client->id(), info->num, info->len);
-        if(info->final){
-          Serial.printf("ws[%s][%u] %s-message end\n", server->url(), client->id(), (info->message_opcode == WS_TEXT)?"text":"binary");
-          if(info->message_opcode == WS_TEXT)
-            client->text("I got your text message");
-          else
-            client->binary("I got your binary message");
-        }
-      }
-    }
-  }
-}
-
-
-///////////////  UPDATES  //////////////
-AsyncWebServerRequest * firmUpdateReq;
-void do_firmware_update(AsyncWebServerRequest *request) {
-  firmUpdateReq = (AsyncWebServerRequest *) 0;
-	request->send(200, "text/plain", "Started firmware update");
-	Serial.println("\nUpdating firmware from http://hahnca.com/xy/firmware.bin");
-	delay(1000);
-	ESPhttpUpdate.rebootOnUpdate(true);
-  t_httpUpdate_return ret = ESPhttpUpdate.update("http://hahnca.com/xy/firmware.bin");
-  switch(ret) {
-    case HTTP_UPDATE_FAILED:
-      Serial.printf("Firmware Update Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-      break;
-    case HTTP_UPDATE_NO_UPDATES:
-      Serial.println("No firmware Updates");
-      break;
-    default:
-      Serial.println("firmware Updated (you shouldn't see this)");
-      break;
-  }
-}
-AsyncWebServerRequest * fsUpdateReq;
-void do_spiffs_update(AsyncWebServerRequest *request) {
-  fsUpdateReq = (AsyncWebServerRequest *) 0;
-	request->send(200, "text/plain", "Started file system update");
-	Serial.println("Updating file system from http://hahnca.com/xy/spiffs.bin");
-	delay(1000);
-	ESPhttpUpdate.rebootOnUpdate(false);
-  t_httpUpdate_return ret = ESPhttpUpdate.updateSpiffs(
-															"http://hahnca.com/xy/spiffs.bin");
-  switch(ret) {
-    case HTTP_UPDATE_FAILED:
-      Serial.printf("FS Update Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
-      break;
-    case HTTP_UPDATE_NO_UPDATES:
-      Serial.println("No FS Updates");
-      break;
-    default:
-      Serial.println("FS Updated");
-      break;
-  }
-}
-
-
-/////////////  LEDS  /////////////
-os_timer_t ledTimer;
-bool ledBlinking;
-bool blinkLedIsOn;
-void led_on()  {digitalWrite(2, 0);}
-void led_off() {digitalWrite(2, 1);}
-void ledBlinkCallback(void *pArg) {
-  blinkLedIsOn = !blinkLedIsOn;
-  if(blinkLedIsOn) led_on();
-  else             led_off();
-}
-void ledBlink(bool turnBlinkOn) {
-  if(!ledBlinking && turnBlinkOn) {
-    ledBlinking = true;
-    os_timer_arm(&ledTimer, 100, true);
-  } else if (ledBlinking && !turnBlinkOn) {
-    os_timer_disarm(&ledTimer);
-    ledBlinking = false;
-    led_off();
-  }
-}
-
-
-/////////////  EEPROM  /////////////
-/* eeprom map
-  2  Magic = 0xedde
-  33 AP ssid name
-  33 AP password
-	4 STA choices (82 each)
-		 33 ssid
-		 33 pwd
-		 16 static ip (as str)
-	396 bytes total
-*/
-#define EEPROM_BYTES_OFS      68
-#define EEPROM_BYTES_PER_SSID 82
-#define EEPROM_TOTAL_BYTES    396
-
-void initeeprom() {
-	char buf[33];
-	int bufidx, eeAddr;
-	String ap_ssid_str;
-  EEPROM.begin(512);
-	if (EEPROM.read(0) != 0xe7 || EEPROM.read(1) != 0xde) {
-    Serial.println("initializing empty eeprom, magic was: " +
-                    String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
-		EEPROM.write(0, 0xe7);
-		EEPROM.write(1, 0xde);
-		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
-    EEPROM.end();
-	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
-		ap_ssid_str.toCharArray(buf, 33);
-    eepromPutStr(buf, 2);
-    eepromPutStr("eridienxy", 35);
-	}
-  EEPROM.end();
-}
-
-int eepromGetStrWLen(char* res, int idx, int len){
-  EEPROM.begin(512);
-  int i = 0; char chr;
-	do { chr = EEPROM.read(idx+i); res[i] = chr; i++; } while (chr);
-  EEPROM.end();
-	return idx+len;
-}
-int eepromGetStr(char* res, int idx){
-  return eepromGetStrWLen(res, idx, 33);
-}
-int eepromGetIP(char* res, int idx){
-  return eepromGetStrWLen(res, idx, 16);
-}
-int eepromPutStrLen(const char* str, int idx, int len){
-  EEPROM.begin(512);
-  int i = 0; char chr;
-	do {EEPROM.write(idx+i, chr=str[i]); i++;} while (chr);
-  EEPROM.end();
-	return idx+len;
-}
-int eepromPutStr(const char* ipStr, int idx) {
-  return eepromPutStrLen(ipStr, idx, 33);
-}
-int eepromPutIp(const char* ipStr, int idx) {
-  return eepromPutStrLen(ipStr, idx, 16);
-}
-
-
-/////////////  AP & STA SETUP  /////////////
-char sta_ssid[33];
-char sta_pwd[33];
-int best_quality;
-
-void find_and_connect() {
-  WiFi.mode(WIFI_AP_STA);
-  find_and_connect_try();
-}
-
-void find_and_connect_try() {
-  ledBlink(true);
-  eepromGetStr(ap_ssid, 2);
-  eepromGetStr(ap_pwd, 35);
-  best_quality = -1000;
-
-	int n = WiFi.scanNetworks(), i, j, eepromIdx;
-	Serial.println(String("\nWifi scan found ") + n + " ssids");
-  char eeprom_ssid[33];
-	for(i=0; i<4; i++) {
-		eepromIdx = eepromGetStr(eeprom_ssid, EEPROM_BYTES_OFS + i * EEPROM_BYTES_PER_SSID);
-    if(eeprom_ssid[0]) {
-      Serial.println(String("trying ") + eeprom_ssid);
-      for(j=0; j<n; j++) {
-  			if(strcmp(WiFi.SSID(j).c_str(), eeprom_ssid) == 0) {
-          if (WiFi.RSSI(j) > best_quality) {
-  					strcpy(sta_ssid, eeprom_ssid);
-  					eepromGetStr(sta_pwd, eepromIdx);
-            best_quality = WiFi.RSSI(j);
-  				}
-  			}
-      }
-		}
-	}
-  WiFi.softAP(ap_ssid, ap_pwd);
-  Serial.println(String("AP ") + ap_ssid +
-                 " running at IP " + WiFi.softAPIP().toString());
-  if(best_quality > -1000) {
-  	Serial.println(String("Connecting to AP ") + sta_ssid +
-                   ", quality " + best_quality);
-    WiFi.begin(sta_ssid, sta_pwd);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-      Serial.println("STA connection failed");
-      WiFi.disconnect(false);
-      delay(1000);
-      WiFi.begin(sta_ssid, sta_pwd);
-    }
-    Serial.println(String("STA address: ") + WiFi.localIP().toString());
-  } else
-    Serial.println("No STA match found in wifi scan");
-  ledBlink(false);
-}
 
 
 //////////////////////  AJAX  /////////////////////
@@ -319,11 +66,11 @@ void do_ssids(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json);
 }
 
-// REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 AsyncWebServerRequest *eepromssidRequest;
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
+  IPAddress ip;
   eepromGetStr(str, 2);
   String json = String("[{\"apSsid\":\"") + str + "\",";
   eepromGetStr(str, 35);
@@ -334,8 +81,8 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     json += String("{\"ssid\":\"") + str  + "\",";
     eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
     json += String("\"password\":\"") + str  + "\",";
-    eepromGetIP(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
-    json += String("\"staticIp\":\"") + str + "\"}" +
+    eepromGetIP(ip, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
+    json += String("\"staticIp\":\"") + ip.toString()  + "\"}" +
                                      (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";
@@ -346,55 +93,45 @@ void do_eepromssids(AsyncWebServerRequest *request) {
 
   request->send(200, "text/json", json);
 }
-// REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 String eepromssidData;
 void eepromssidPost() {
+  Serial.println(String("starting to parse: ") + eepromssidData);
   const size_t bufferSize = JSON_ARRAY_SIZE(5) + JSON_OBJECT_SIZE(2) +
                                                4*JSON_OBJECT_SIZE(3);
   DynamicJsonBuffer jsonBuffer(bufferSize);
   JsonArray& root = jsonBuffer.parseArray(eepromssidData);
+
+  const char* root_apSsid = root[0]["apSsid"]; // "eridien_XY_c3b2f0"
+  const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
+
+  Serial.println(root_apSsid);
+  Serial.println(root_apPwd);
+
+  eepromPutStr(root_apSsid, 2);
+  eepromPutStr(root_apPwd,  35);
+
+  // const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
+  // JsonObject& 1 = root[1];
+  // const char* 1_ssid = 1["ssid"]; // ""
+  // const char* 1_password = 1["password"]; // ""
+  // const char* 1_staticIp = 1["staticIp"]; // ""
+  // JsonObject& 2 = root[2];
+  // const char* 2_ssid = 2["ssid"]; // ""
+  // const char* 2_password = 2["password"]; // ""
+  // const char* 2_staticIp = 2["staticIp"]; // ""
+  // JsonObject& 3 = root[3];
+  // const char* 3_ssid = 3["ssid"]; // ""
+  // const char* 3_password = 3["password"]; // ""
+  // const char* 3_staticIp = 3["staticIp"]; // ""
+  // JsonObject& 4 = root[4];
+  // const char* 4_ssid = 4["ssid"]; // ""
+  // const char* 4_password = 4["password"]; // ""
+  // const char* 4_staticIp = 4["staticIp"]; // ""
+  Serial.println("done parsing");
   if (!root.success()) {
     Serial.println("parse failed");
     return;
   }
-  int eeIdx = 2;
-
-  const char* root_apSsid = root[0]["apSsid"];
-  const char* root_apPwd  = root[0]["apPwd"];
-  eeIdx = eepromPutStr(root_apSsid, eeIdx);
-  eeIdx = eepromPutStr(root_apPwd,  eeIdx);
-
-  JsonObject& a = root[1];
-  const char* ssid1      = a["ssid"];
-  const char* password1  = a["password"];
-  const char* staticIp1  = a["staticIp"];
-  eeIdx = eepromPutStr(ssid1,     eeIdx);
-  eeIdx = eepromPutStr(password1, eeIdx);
-  eeIdx = eepromPutIp(staticIp1,  eeIdx);
-
-  JsonObject& b = root[2];
-  const char* ssid2      = b["ssid"];
-  const char* password2  = b["password"];
-  const char* staticIp2  = b["staticIp"];
-  eeIdx = eepromPutStr(ssid2,     eeIdx);
-  eeIdx = eepromPutStr(password2, eeIdx);
-  eeIdx = eepromPutIp(staticIp2,  eeIdx);
-
-  JsonObject& c = root[3];
-  const char* ssid3      = c["ssid"];
-  const char* password3  = c["password"];
-  const char* staticIp3  = c["staticIp"];
-  eeIdx = eepromPutStr(ssid3,     eeIdx);
-  eeIdx = eepromPutStr(password3, eeIdx);
-  eeIdx = eepromPutIp(staticIp3,  eeIdx);
-
-  JsonObject& d = root[4];
-  const char* ssid4      = d["ssid"];
-  const char* password4  = d["password"];
-  const char* staticIp4  = d["staticIp"];
-  eeIdx = eepromPutStr(ssid4,     eeIdx);
-  eeIdx = eepromPutStr(password4, eeIdx);
-  eeIdx = eepromPutIp(staticIp4,  eeIdx);
 }
 
 
@@ -409,7 +146,8 @@ void setup() {
 	initeeprom();
 	pinMode(2, OUTPUT);
 	SPIFFS.begin();
-  os_timer_setfn(&ledTimer, ledBlinkCallback, NULL);
+  ledInit();
+
 
 
 /////////////  DNS  /////////////
