@@ -8,16 +8,18 @@
 #include "xy-eeprom.h"
 #include "xy-wifi.h"
 
+#define magicByt1 0xe8
+#define magicByt2 0xde
+
 void initeeprom() {
 	char buf[33];
 	int bufidx, eeAddr;
 	String ap_ssid_str;
   EEPROM.begin(512);
-	if (EEPROM.read(0) != 0xe7 || EEPROM.read(1) != 0xde) {
+	if (EEPROM.read(0) != magicByt1 || EEPROM.read(1) != magicByt2) {
     Serial.println("initializing empty eeprom, magic was: " +
                     String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
-		EEPROM.write(0, 0xe7);
-		EEPROM.write(1, 0xde);
+		EEPROM.write(0, magicByt1);
 		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
     EEPROM.end();
 	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);

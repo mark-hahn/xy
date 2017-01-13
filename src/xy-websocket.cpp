@@ -1,6 +1,7 @@
 #include <EEPROM.h>
 
 #include "xy-websocket.h"
+#include "xy-server.h"
 
 AsyncWebSocket ws("/ws");
 
@@ -76,7 +77,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
   }
 }
 
-setupWebsocket() {
+void setupWebsocket() {
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
 }

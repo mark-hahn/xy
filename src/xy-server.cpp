@@ -1,5 +1,14 @@
 
+#include <ESPAsyncWebServer.h>
+#include <ESP8266mDNS.h>
+#include <SPIFFSEditor.h>
+#include <DNSServer.h>
+#include <EEPROM.h>
+
 #include "xy-server.h"
+#include "xy-ajax.h"
+#include "xy-updates.h"
+#include "xy-wifi.h"
 
 AsyncWebServer server(80);
 DNSServer dnsServer;
@@ -9,7 +18,6 @@ void setupServer() {
 	const byte DNS_PORT = 53;
 	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
 	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-
 
   MDNS.begin("xy");
   MDNS.addService("http", "tcp", 80);
@@ -26,13 +34,15 @@ void setupServer() {
     ssidRequest = request;
   });
 
+	server.on("/eepromssids", HTTP_GET, [](AsyncWebServerRequest *request){
+		eepromssidRequest = request;
+	});
+
   server.on("/setssids", HTTP_OPTIONS, responseOK);
   server.on("/setssids", HTTP_POST, responseOK, 0,
     [](AsyncWebServerRequest *request,
             uint8_t *data, size_t len, size_t index, size_t total) {
-    if(!index) {
-      eepromssidData = String("");
-    }
+    if(!index) eepromssidData = String("");
     char lastChar[2];
     lastChar[0] = data[len-1]; lastChar[1] = 0;
     data[len-1] = 0;
@@ -41,10 +51,6 @@ void setupServer() {
       eepromssidPost();
       eepromssidData = String("");
     }
-  });
-
-  server.on("/eepromssids", HTTP_GET, [](AsyncWebServerRequest *request){
-    eepromssidRequest = request;
   });
 
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){

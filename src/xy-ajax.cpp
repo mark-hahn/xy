@@ -52,27 +52,24 @@ void do_ssids(AsyncWebServerRequest *request) {
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
-  eepromGetStr(str, 2);
+  int ssidIdx, eeidx = 2;
+  eeidx = eepromGetStr(str, eeidx);
   String json = String("[{\"apSsid\":\"") + str + "\",";
-  eepromGetStr(str, 35);
+  eeidx = eepromGetStr(str, eeidx);
   json += String("\"apPwd\":\"") + str + "\"},";
-  int ssidIdx;
   for(ssidIdx=0; ssidIdx<4; ssidIdx++) {
-    eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID);
+    eeidx = eepromGetStr(str, eeidx);
     json += String("{\"ssid\":\"") + str  + "\",";
-    eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
+    eeidx = eepromGetStr(str, eeidx);
     json += String("\"password\":\"") + str  + "\",";
-    eepromPutIp(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
-    json += String("\"staticIp\":\"") + str + "\"}" +
-                                     (ssidIdx == 3 ? "" : ",");
+    eeidx = eepromPutIp(str, eeidx);
+    json += String("\"staticIp\":\"") + str + "\"}" + (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";
   AsyncWebServerResponse *response =
       request->beginResponse(200, "text/json", json);
   response->addHeader("Access-Control-Allow-Origin","*");
   request->send(response);
-
-  request->send(200, "text/json", json);
 }
 // TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 

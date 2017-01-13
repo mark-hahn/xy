@@ -1,18 +1,6 @@
 
 
-#define VERSION "version 0.1"
-
-#include <ESPAsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <ESP8266mDNS.h>
-#include <FS.h>
-#include <SPIFFSEditor.h>
-#include <Hash.h>
-#include <DNSServer.h>
-
-// includes needed for platformIO bug
-#include <EEPROM.h>
-#include <ESP8266httpUpdate.h>
+#define VERSION "version 0.2"
 
 #include "xy-eeprom.h"
 #include "xy-websocket.h"
@@ -38,7 +26,7 @@ void setup() {
 }
 
 void loop() {
-  chkUpdates();
-  chkAjax();
 	chkServer();
+  chkAjax();
+	chkUpdates();
 }
