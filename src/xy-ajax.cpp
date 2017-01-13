@@ -14,17 +14,17 @@ void responseOK(AsyncWebServerRequest *request) {
       request->beginResponse(200, "text/plain", "OK");
   response->addHeader("Access-Control-Allow-Origin","*");
   response->addHeader("Access-Control-Allow-Methods", "POST");
-  response->addHeader("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+  response->addHeader("Access-Control-Allow-Headers",
+    "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
   request->send(response);
 }
 
 void do_ssids(AsyncWebServerRequest *request) {
   ssidRequest = (AsyncWebServerRequest*) 0;
 	int ssidCount = WiFi.scanNetworks();
-  Serial.println(String("\nWifi scan found ") + ssidCount + " ssids");
+  Serial.println(String("\ndo_ssids: Wifi scan found ") + ssidCount + " ssids");
   String json = "[";
-  int ssidIdx;
-  for(ssidIdx=0; ssidIdx<ssidCount; ssidIdx++) {
+  int ssidIdx; for(ssidIdx=0; ssidIdx<ssidCount; ssidIdx++) {
     json += "{\"ssid\":\"" + WiFi.SSID(ssidIdx)  + "\"," +
              "\"encryptionType\":\"";
     switch (WiFi.encryptionType(ssidIdx)) {
@@ -43,8 +43,6 @@ void do_ssids(AsyncWebServerRequest *request) {
       request->beginResponse(200, "text/json", json);
   response->addHeader("Access-Control-Allow-Origin","*");
   request->send(response);
-
-  request->send(200, "text/json", json);
 }
 
 // TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
@@ -62,7 +60,7 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     json += String("{\"ssid\":\"") + str  + "\",";
     eeidx = eepromGetStr(str, eeidx);
     json += String("\"password\":\"") + str  + "\",";
-    eeidx = eepromPutIp(str, eeidx);
+    eeidx = eepromGetIp(str, eeidx);
     json += String("\"staticIp\":\"") + str + "\"}" + (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";

@@ -8,7 +8,7 @@
 #include "xy-eeprom.h"
 #include "xy-wifi.h"
 
-#define magicByt1 0xe8
+#define magicByt1 0xea
 #define magicByt2 0xde
 
 void initeeprom() {
@@ -16,6 +16,7 @@ void initeeprom() {
 	int bufidx, eeAddr;
 	String ap_ssid_str;
   EEPROM.begin(512);
+	//  TODO if ADC high then initialize eerom
 	if (EEPROM.read(0) != magicByt1 || EEPROM.read(1) != magicByt2) {
     Serial.println("initializing empty eeprom, magic was: " +
                     String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
@@ -40,7 +41,7 @@ int eepromGetStrWLen(char* res, int idx, int len){
 int eepromGetStr(char* res, int idx){
   return eepromGetStrWLen(res, idx, 33);
 }
-int eepromGetIP(char* res, int idx){
+int eepromGetIp(char* res, int idx){
   return eepromGetStrWLen(res, idx, 16);
 }
 int eepromPutStrLen(const char* str, int idx, int len){

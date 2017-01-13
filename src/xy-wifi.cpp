@@ -29,9 +29,9 @@ void find_and_connect_try() {
 	for(i=0; i<4; i++) {
 		eepromIdx = eepromGetStr(eeprom_ssid, EEPROM_BYTES_OFS + i * EEPROM_BYTES_PER_SSID);
     if(eeprom_ssid[0]) {
-      Serial.println(String("trying ") + eeprom_ssid);
       for(j=0; j<n; j++) {
   			if(strcmp(WiFi.SSID(j).c_str(), eeprom_ssid) == 0) {
+          Serial.println(String("checking ") + eeprom_ssid + ", strength " + WiFi.RSSI(j));
           if (WiFi.RSSI(j) > best_quality) {
   					strcpy(sta_ssid, eeprom_ssid);
   					eepromGetStr(sta_pwd, eepromIdx);
@@ -45,8 +45,7 @@ void find_and_connect_try() {
   Serial.println(String("AP ") + ap_ssid +
                  " running at IP " + WiFi.softAPIP().toString());
   if(best_quality > -1000) {
-  	Serial.println(String("Connecting to AP ") + sta_ssid +
-                   ", quality " + best_quality);
+  	Serial.println(String("Connecting to AP ") + sta_ssid);
     WiFi.begin(sta_ssid, sta_pwd);
     if (WiFi.waitForConnectResult() != WL_CONNECTED) {
       Serial.println("STA connection failed");
