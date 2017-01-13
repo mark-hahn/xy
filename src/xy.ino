@@ -70,7 +70,6 @@ AsyncWebServerRequest *eepromssidRequest;
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
-  IPAddress ip;
   eepromGetStr(str, 2);
   String json = String("[{\"apSsid\":\"") + str + "\",";
   eepromGetStr(str, 35);
@@ -81,8 +80,8 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     json += String("{\"ssid\":\"") + str  + "\",";
     eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
     json += String("\"password\":\"") + str  + "\",";
-    eepromGetIP(ip, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
-    json += String("\"staticIp\":\"") + ip.toString()  + "\"}" +
+    eepromGetIP(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
+    json += String("\"staticIp\":\"") +str  + "\"}" +
                                      (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";

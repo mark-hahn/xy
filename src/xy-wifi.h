@@ -9,6 +9,7 @@ extern char ap_pwd[33];
 extern char sta_ssid[33];
 extern char sta_pwd[33];
 
+void find_and_connect_try();
 void find_and_connect();
 
 #endif
