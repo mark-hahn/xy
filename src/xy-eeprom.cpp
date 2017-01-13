@@ -13,10 +13,10 @@ void initeeprom() {
 	int bufidx, eeAddr;
 	String ap_ssid_str;
   EEPROM.begin(512);
-	if (EEPROM.read(0) != 0xed || EEPROM.read(1) != 0xde) {
+	if (EEPROM.read(0) != 0xe7 || EEPROM.read(1) != 0xde) {
     Serial.println("initializing empty eeprom, magic was: " +
                     String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
-		EEPROM.write(0, 0xed);
+		EEPROM.write(0, 0xe7);
 		EEPROM.write(1, 0xde);
 		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
     EEPROM.end();
@@ -27,33 +27,30 @@ void initeeprom() {
 	}
   EEPROM.end();
 }
-int eepromGetStr(char* res, int idx){
+
+int eepromGetStrWLen(char* res, int idx, int len){
   EEPROM.begin(512);
   int i = 0; char chr;
 	do { chr = EEPROM.read(idx+i); res[i] = chr; i++; } while (chr);
   EEPROM.end();
-	return idx+33;
+	return idx+len;
 }
-int eepromGetIP(IPAddress res, int idx){
-  EEPROM.begin(512);
-	int i;
-	for(i=0; i<4; i++) res[i] = EEPROM.read(idx+i);
-  EEPROM.end();
-	return idx+4;
+int eepromGetStr(char* res, int idx){
+  return eepromGetStrWLen(res, idx, 33);
 }
-int eepromPutStr(const char* str, int idx){
+int eepromGetIP(char* res, int idx){
+  return eepromGetStrWLen(res, idx, 16);
+}
+int eepromPutStrLen(const char* str, int idx, int len){
   EEPROM.begin(512);
   int i = 0; char chr;
 	do {EEPROM.write(idx+i, chr=str[i]); i++;} while (chr);
   EEPROM.end();
-	return idx+33;
+	return idx+len;
 }
-int eepromPutIP(const char* ipStr, int idx){
-  IPAddress ip;
-  if(ip.fromString(ipStr)) {
-    EEPROM.begin(512);
-  	int i; for(i=0; i<4; i++) EEPROM.write(idx+i, ip[i]);
-    EEPROM.end();
-  }
-	return idx+4;
+int eepromPutStr(const char* ipStr, int idx) {
+  return eepromPutStrLen(ipStr, idx, 33);
+}
+int eepromPutIp(const char* ipStr, int idx) {
+  return eepromPutStrLen(ipStr, idx, 16);
 }
