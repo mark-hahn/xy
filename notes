@@ -1,5 +1,4 @@
 
-- can't connect to xy ap when xy can't connect to its ap
 - support static ip
 - call find_and_connect_try on every ssid form update
 

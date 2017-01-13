@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include "xy-ajax.h"
+#include "xy-wifi.h"
 #include "xy-eeprom.h"
 
 AsyncWebServerRequest *ssidRequest;
@@ -118,6 +119,8 @@ void eepromssidPost() {
   eeIdx = eepromPutStr(ssid4,     eeIdx);
   eeIdx = eepromPutStr(password4, eeIdx);
   eeIdx = eepromPutIp(staticIp4,  eeIdx);
+
+  find_and_connect();
 }
 
 void chkAjax() {

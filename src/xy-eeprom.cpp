@@ -8,7 +8,7 @@
 #include "xy-eeprom.h"
 #include "xy-wifi.h"
 
-#define magicByt1 0xea
+#define magicByt1 0x7d
 #define magicByt2 0xde
 
 void initeeprom() {
@@ -18,8 +18,9 @@ void initeeprom() {
   EEPROM.begin(512);
 	//  TODO if ADC high then initialize eerom
 	if (EEPROM.read(0) != magicByt1 || EEPROM.read(1) != magicByt2) {
-    Serial.println("initializing empty eeprom, magic was: " +
-                    String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX));
+    Serial.println("** initializing eeprom, magic was: " +
+                    String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX) +
+										", now: " + String(magicByt1,HEX) + String(magicByt2,HEX));
 		EEPROM.write(0, magicByt1);
 		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
     EEPROM.end();
