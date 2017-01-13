@@ -47,6 +47,9 @@ void do_ssids(AsyncWebServerRequest *request) {
   request->send(200, "text/json", json);
 }
 
+// TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
+
+AsyncWebServerRequest *eepromssidRequest;
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
@@ -61,7 +64,7 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
     json += String("\"password\":\"") + str  + "\",";
     eepromGetIP(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
-    json += String("\"staticIp\":\"") +str  + "\"}" +
+    json += String("\"staticIp\":\"") + str + "\"}" +
                                      (ssidIdx == 3 ? "" : ",");
 	}
   json += "]";
@@ -72,46 +75,58 @@ void do_eepromssids(AsyncWebServerRequest *request) {
 
   request->send(200, "text/json", json);
 }
+// TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 
+String eepromssidData;
 void eepromssidPost() {
-  Serial.println(String("starting to parse: ") + eepromssidData);
   const size_t bufferSize = JSON_ARRAY_SIZE(5) + JSON_OBJECT_SIZE(2) +
                                                4*JSON_OBJECT_SIZE(3);
   DynamicJsonBuffer jsonBuffer(bufferSize);
   JsonArray& root = jsonBuffer.parseArray(eepromssidData);
-
-  const char* root_apSsid = root[0]["apSsid"]; // "eridien_XY_c3b2f0"
-  const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
-
-  Serial.println(root_apSsid);
-  Serial.println(root_apPwd);
-
-  eepromPutStr(root_apSsid, 2);
-  eepromPutStr(root_apPwd,  35);
-
-  // const char* root_apPwd  = root[0]["apPwd"]; // "eridien"
-  // JsonObject& 1 = root[1];
-  // const char* 1_ssid = 1["ssid"]; // ""
-  // const char* 1_password = 1["password"]; // ""
-  // const char* 1_staticIp = 1["staticIp"]; // ""
-  // JsonObject& 2 = root[2];
-  // const char* 2_ssid = 2["ssid"]; // ""
-  // const char* 2_password = 2["password"]; // ""
-  // const char* 2_staticIp = 2["staticIp"]; // ""
-  // JsonObject& 3 = root[3];
-  // const char* 3_ssid = 3["ssid"]; // ""
-  // const char* 3_password = 3["password"]; // ""
-  // const char* 3_staticIp = 3["staticIp"]; // ""
-  // JsonObject& 4 = root[4];
-  // const char* 4_ssid = 4["ssid"]; // ""
-  // const char* 4_password = 4["password"]; // ""
-  // const char* 4_staticIp = 4["staticIp"]; // ""
-  Serial.println("done parsing");
   if (!root.success()) {
     Serial.println("parse failed");
     return;
   }
+  int eeIdx = 2;
+
+  const char* root_apSsid = root[0]["apSsid"];
+  const char* root_apPwd  = root[0]["apPwd"];
+  eeIdx = eepromPutStr(root_apSsid, eeIdx);
+  eeIdx = eepromPutStr(root_apPwd,  eeIdx);
+
+  JsonObject& a = root[1];
+  const char* ssid1      = a["ssid"];
+  const char* password1  = a["password"];
+  const char* staticIp1  = a["staticIp"];
+  eeIdx = eepromPutStr(ssid1,     eeIdx);
+  eeIdx = eepromPutStr(password1, eeIdx);
+  eeIdx = eepromPutIp(staticIp1,  eeIdx);
+
+  JsonObject& b = root[2];
+  const char* ssid2      = b["ssid"];
+  const char* password2  = b["password"];
+  const char* staticIp2  = b["staticIp"];
+  eeIdx = eepromPutStr(ssid2,     eeIdx);
+  eeIdx = eepromPutStr(password2, eeIdx);
+  eeIdx = eepromPutIp(staticIp2,  eeIdx);
+
+  JsonObject& c = root[3];
+  const char* ssid3      = c["ssid"];
+  const char* password3  = c["password"];
+  const char* staticIp3  = c["staticIp"];
+  eeIdx = eepromPutStr(ssid3,     eeIdx);
+  eeIdx = eepromPutStr(password3, eeIdx);
+  eeIdx = eepromPutIp(staticIp3,  eeIdx);
+
+  JsonObject& d = root[4];
+  const char* ssid4      = d["ssid"];
+  const char* password4  = d["password"];
+  const char* staticIp4  = d["staticIp"];
+  eeIdx = eepromPutStr(ssid4,     eeIdx);
+  eeIdx = eepromPutStr(password4, eeIdx);
+  eeIdx = eepromPutIp(staticIp4,  eeIdx);
 }
+
 void chkAjax() {
   if(ssidRequest)       do_ssids(ssidRequest);
   if(eepromssidRequest) do_eepromssids(eepromssidRequest);
