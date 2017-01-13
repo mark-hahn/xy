@@ -5,6 +5,7 @@
 #include "xy-wifi.h"
 #include "xy-leds.h"
 #include "xy-eeprom.h"
+#include "xy-ajax.h"
 
 char ap_ssid[33];
 char ap_pwd[33];
@@ -18,6 +19,7 @@ void find_and_connect() {
 }
 
 void find_and_connect_try() {
+  connectAfterFormPost = false;
   ledBlink(true);
   eepromGetStr(ap_ssid, 2);
   eepromGetStr(ap_pwd, 35);
@@ -46,6 +48,7 @@ void find_and_connect_try() {
                  " running at IP " + WiFi.softAPIP().toString());
   if(best_quality > -1000) {
   	Serial.println(String("Connecting to AP ") + sta_ssid);
+    WiFi.disconnect(false);
     WiFi.begin(sta_ssid, sta_pwd);
     if (WiFi.waitForConnectResult() != WL_CONNECTED) {
       Serial.println("STA connection failed");

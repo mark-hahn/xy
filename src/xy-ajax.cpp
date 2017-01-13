@@ -8,6 +8,8 @@
 
 AsyncWebServerRequest *ssidRequest;
 AsyncWebServerRequest *eepromssidRequest;
+bool connectAfterFormPost = false;
+
 String eepromssidData;
 
 void responseOK(AsyncWebServerRequest *request) {
@@ -120,10 +122,11 @@ void eepromssidPost() {
   eeIdx = eepromPutStr(password4, eeIdx);
   eeIdx = eepromPutIp(staticIp4,  eeIdx);
 
-  find_and_connect();
+  connectAfterFormPost = true;
 }
 
 void chkAjax() {
   if(ssidRequest)       do_ssids(ssidRequest);
   if(eepromssidRequest) do_eepromssids(eepromssidRequest);
+  if(connectAfterFormPost) find_and_connect_try();
 }

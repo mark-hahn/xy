@@ -4,7 +4,8 @@
 
 extern AsyncWebServerRequest *ssidRequest;
 extern AsyncWebServerRequest *eepromssidRequest;
-extern String eepromssidData;
+extern bool                   connectAfterFormPost;
+extern String                 eepromssidData;
 
 void responseOK(AsyncWebServerRequest *request);
 void do_ssids(AsyncWebServerRequest *request);
