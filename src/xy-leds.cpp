@@ -15,6 +15,7 @@ void ledBlinkCallback(void *pArg) {
   else             led_off();
 }
 void ledInit() {
+  pinMode(2, OUTPUT);
   os_timer_setfn(&ledTimer, ledBlinkCallback, NULL);
 }
 

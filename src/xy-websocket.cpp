@@ -2,7 +2,8 @@
 
 #include "xy-websocket.h"
 
-//////////////////  WEB SOCKET  //////////////////
+AsyncWebSocket ws("/ws");
+
 void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
     Serial.printf("ws[%s][%u] connect\n", server->url(), client->id());
@@ -73,4 +74,9 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       }
     }
   }
+}
+
+setupWebsocket() {
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
 }
