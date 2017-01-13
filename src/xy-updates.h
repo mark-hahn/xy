@@ -2,8 +2,6 @@
 #ifndef _xy_updates
 #define _xy_updates
 
-#include <EEPROM.h>
-
 extern AsyncWebServerRequest * firmUpdateReq;
 extern AsyncWebServerRequest * fsUpdateReq;
 

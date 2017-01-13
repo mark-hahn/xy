@@ -49,7 +49,6 @@ void do_ssids(AsyncWebServerRequest *request) {
 
 // TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 
-AsyncWebServerRequest *eepromssidRequest;
 void do_eepromssids(AsyncWebServerRequest *request) {
   eepromssidRequest = (AsyncWebServerRequest*) 0;
   char str[33];
@@ -63,7 +62,7 @@ void do_eepromssids(AsyncWebServerRequest *request) {
     json += String("{\"ssid\":\"") + str  + "\",";
     eepromGetStr(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 33);
     json += String("\"password\":\"") + str  + "\",";
-    eepromGetIP(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
+    eepromPutIp(str, EEPROM_BYTES_OFS + ssidIdx * EEPROM_BYTES_PER_SSID + 66);
     json += String("\"staticIp\":\"") + str + "\"}" +
                                      (ssidIdx == 3 ? "" : ",");
 	}
@@ -77,7 +76,6 @@ void do_eepromssids(AsyncWebServerRequest *request) {
 }
 // TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 
-String eepromssidData;
 void eepromssidPost() {
   const size_t bufferSize = JSON_ARRAY_SIZE(5) + JSON_OBJECT_SIZE(2) +
                                                4*JSON_OBJECT_SIZE(3);
