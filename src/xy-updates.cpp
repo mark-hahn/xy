@@ -9,6 +9,8 @@
 #define updateServer String("http://hahnca.com/xy/")
 
 AsyncWebServerRequest * firmUpdateReq;
+AsyncWebServerRequest * fsUpdateReq;
+
 void do_firmware_update(AsyncWebServerRequest *request) {
   firmUpdateReq = (AsyncWebServerRequest *) 0;
 	request->send(200, "text/plain", "Started firmware update");
@@ -19,7 +21,9 @@ void do_firmware_update(AsyncWebServerRequest *request) {
   t_httpUpdate_return ret = ESPhttpUpdate.update(url);
   switch(ret) {
     case HTTP_UPDATE_FAILED:
-      Serial.printf("Firmware Update Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+      Serial.printf("Firmware Update Error (%d): %s",
+                     ESPhttpUpdate.getLastError(),
+                     ESPhttpUpdate.getLastErrorString().c_str());
       break;
     case HTTP_UPDATE_NO_UPDATES:
       Serial.println("No firmware Updates");
@@ -29,7 +33,6 @@ void do_firmware_update(AsyncWebServerRequest *request) {
       break;
   }
 }
-AsyncWebServerRequest * fsUpdateReq;
 void do_spiffs_update(AsyncWebServerRequest *request) {
   fsUpdateReq = (AsyncWebServerRequest *) 0;
 	request->send(200, "text/plain", "Started file system update");
@@ -49,4 +52,9 @@ void do_spiffs_update(AsyncWebServerRequest *request) {
       Serial.println("FS Updated");
       break;
   }
+}
+
+void chkUpdates() {
+  if(firmUpdateReq) do_firmware_update(firmUpdateReq);
+  if(fsUpdateReq)   do_spiffs_update(fsUpdateReq);
 }
