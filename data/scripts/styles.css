@@ -1,0 +1,52 @@
+html {
+  box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+a {
+  text-decoration: none;
+  color: black;
+}
+body {
+  padding: 10px 20px;
+}
+.navbar {
+  border: 1px solid black;
+  padding: 4px;
+}
+.xy-hdr {
+  float: right;
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 15px;
+}
+.nav-btn {
+  padding: 2px;
+  border: 1px solid gray;
+  font-weight: bold;
+  border-radius: 5px;
+  background-color: #eee;
+  margin: 5px;
+}
+.nav-btn.active {
+  color: gray;
+}
+.router-view {
+  width: 100%;
+  margin-top: 15px;
+}
+.ssid-table {
+  margin-top: 5px;
+}
+.ssid-table th {
+  text-align: left;
+}
+.ssid-table td {
+  padding: 3px 5px;
+}
+.ssid-table td button {
+  margin-right: 15px;
+}
