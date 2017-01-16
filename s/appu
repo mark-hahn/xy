@@ -1,5 +1,6 @@
 
 set -e
 
-./app
-pio run -t uploadfs
+s/app
+
+curl http://192.168.1.244/fs
