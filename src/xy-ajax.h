@@ -2,13 +2,17 @@
 #ifndef _xy_ajax
 #define _xy_ajax
 
-extern AsyncWebServerRequest *ssidScanReq;
-extern AsyncWebServerRequest *getEepromReq;
-extern AsyncWebServerRequest *wifiStatusReq;
+extern AsyncWebServerRequest *ssidRequest;
+extern AsyncWebServerRequest *eepromssidRequest;
+extern AsyncWebServerRequest *wifistatusRequest;
 extern bool                   connectAfterFormPost;
 extern String                 eepromssidData;
 
-void initAjaxServer(AsyncWebServer server);
+void responseOK(AsyncWebServerRequest *request);
+void do_ssids(AsyncWebServerRequest *request);
+void do_eepromssids(AsyncWebServerRequest *request);
+void eepromssidPost();
 void chkAjax();
+
 
 #endif
