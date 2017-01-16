@@ -18,41 +18,24 @@ void setupServer() {
 	const byte DNS_PORT = 53;
 	dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
 	dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
-
+	Serial.println("1");
   MDNS.begin("xy");
+	Serial.println("2");
   MDNS.addService("http", "tcp", 80);
-
+	Serial.println("3");
+	initAjaxServer(server);
+	Serial.println("4");
   server.addHandler(new SPIFFSEditor("admin","admin"));
 
+	Serial.println("5");
   server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
     firmUpdateReq = request;
   });
+	Serial.println("51");
   server.on("/fs", HTTP_GET, [](AsyncWebServerRequest *request){
     fsUpdateReq = request;
   });
-  server.on("/ssids", HTTP_GET, [](AsyncWebServerRequest *request){
-    ssidRequest = request;
-  });
-
-	server.on("/eepromssids", HTTP_GET, [](AsyncWebServerRequest *request){
-		eepromssidRequest = request;
-	});
-
-  server.on("/setssids", HTTP_OPTIONS, responseOK);
-  server.on("/setssids", HTTP_POST, responseOK, 0,
-    [](AsyncWebServerRequest *request,
-            uint8_t *data, size_t len, size_t index, size_t total) {
-    if(!index) eepromssidData = String("");
-    char lastChar[2];
-    lastChar[0] = data[len-1]; lastChar[1] = 0;
-    data[len-1] = 0;
-    eepromssidData = eepromssidData + String((char*)data) + lastChar;
-    if(index + len == total) {
-      eepromssidPost();
-      eepromssidData = String("");
-    }
-  });
-
+	Serial.println("52");
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
     Serial.println("generate_204: " + request->url());
     request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
@@ -66,6 +49,7 @@ void setupServer() {
                         "</p></div></center>");
   });
 
+	Serial.println("53");
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
     request->send(200);
   }, [](AsyncWebServerRequest *request, const String& filename,
@@ -92,14 +76,16 @@ void setupServer() {
       Serial.println("Upload End: " + filename + ", " + (index+len));
     }
   });
-
+	Serial.println("54");
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
+	Serial.println("55");
   server.onNotFound([](AsyncWebServerRequest *request){
     Serial.println("File not found: " + request->url());
     request->send(404);
   });
 
+	Serial.println("56");
   server.begin();
 	Serial.println("HTTP server started");
 }

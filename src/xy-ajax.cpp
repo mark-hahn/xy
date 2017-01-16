@@ -6,8 +6,9 @@
 #include "xy-wifi.h"
 #include "xy-eeprom.h"
 
-AsyncWebServerRequest *ssidRequest;
-AsyncWebServerRequest *eepromssidRequest;
+AsyncWebServerRequest *ssidScanReq;
+AsyncWebServerRequest *getEepromReq;
+AsyncWebServerRequest *wifiStatusReq;
 bool connectAfterFormPost = false;
 
 String eepromssidData;
@@ -22,10 +23,10 @@ void responseOK(AsyncWebServerRequest *request) {
   request->send(response);
 }
 
-void do_ssids(AsyncWebServerRequest *request) {
-  ssidRequest = (AsyncWebServerRequest*) 0;
+void do_ssidScan(AsyncWebServerRequest *request) {
+  ssidScanReq = (AsyncWebServerRequest*) 0;
 	int ssidCount = WiFi.scanNetworks();
-  Serial.println(String("\ndo_ssids: Wifi scan found ") + ssidCount + " ssids");
+  Serial.println(String("\ndo_ssidScan: Wifi scan found ") + ssidCount + " ssids");
   String json = "[";
   int ssidIdx; for(ssidIdx=0; ssidIdx<ssidCount; ssidIdx++) {
     json += "{\"ssid\":\"" + WiFi.SSID(ssidIdx)  + "\"," +
@@ -50,8 +51,8 @@ void do_ssids(AsyncWebServerRequest *request) {
 
 // TODO: REPLACE BODY WITH CONCATENATED STRING INSTEAD OF JSON
 
-void do_eepromssids(AsyncWebServerRequest *request) {
-  eepromssidRequest = (AsyncWebServerRequest*) 0;
+void do_getEeprom(AsyncWebServerRequest *request) {
+  getEepromReq = (AsyncWebServerRequest*) 0;
   char str[33];
   int ssidIdx, eeidx = 2;
   eeidx = eepromGetStr(str, eeidx);
@@ -125,8 +126,49 @@ void eepromssidPost() {
   connectAfterFormPost = true;
 }
 
+void do_wifiStatus(AsyncWebServerRequest *request) {
+  wifiStatusReq = (AsyncWebServerRequest*) 0;
+  char str[33];
+  String json = "{\"apSsid\":\""  + String(ap_ssid)            + "\"," +
+                 "\"apIp\":\""    + WiFi.softAPIP().toString() + "\"," +
+                 "\"staSsid\":\"" + String(sta_ssid)           + "\"," +
+                 "\"staIp\":\""   + WiFi.localIP().toString()  + "\"}";
+  AsyncWebServerResponse *response =
+      request->beginResponse(200, "text/json", json);
+  response->addHeader("Access-Control-Allow-Origin","*");
+  request->send(response);
+}
+
+void initAjaxServer(AsyncWebServer server) {
+  server.on("/ajax/ssid-scan", HTTP_GET, [](AsyncWebServerRequest *request){
+    ssidScanReq = request;
+  });
+  server.on("/ajax/wifi-status", HTTP_GET, [](AsyncWebServerRequest *request){
+    wifiStatusReq = request;
+  });
+	server.on("/ajax/get-eeprom", HTTP_GET, [](AsyncWebServerRequest *request){
+		getEepromReq = request;
+	});
+
+  server.on("/ajax/set-eeprom", HTTP_OPTIONS, responseOK);
+  server.on("/ajax/set-eeprom", HTTP_POST, responseOK, 0,
+    [](AsyncWebServerRequest *request,
+            uint8_t *data, size_t len, size_t index, size_t total) {
+    if(!index) eepromssidData = String("");
+    char lastChar[2];
+    lastChar[0] = data[len-1]; lastChar[1] = 0;
+    data[len-1] = 0;
+    eepromssidData = eepromssidData + String((char*)data) + lastChar;
+    if(index + len == total) {
+      eepromssidPost();
+      eepromssidData = String("");
+    }
+  });
+}
+
 void chkAjax() {
-  if(ssidRequest)       do_ssids(ssidRequest);
-  if(eepromssidRequest) do_eepromssids(eepromssidRequest);
+  if(ssidScanReq)          do_ssidScan(ssidScanReq);
+  if(getEepromReq)         do_getEeprom(getEepromReq);
+  if(wifiStatusReq)        do_wifiStatus(wifiStatusReq);
   if(connectAfterFormPost) find_and_connect_try();
 }
