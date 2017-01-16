@@ -140,15 +140,15 @@ void do_wifiStatus(AsyncWebServerRequest *request) {
 }
 
 void initAjaxServer(AsyncWebServer server) {
-  server.on("/ajax/ssid-scan", HTTP_GET, [](AsyncWebServerRequest *request){
-    ssidScanReq = request;
-  });
   server.on("/ajax/wifi-status", HTTP_GET, [](AsyncWebServerRequest *request){
     wifiStatusReq = request;
   });
 	server.on("/ajax/get-eeprom", HTTP_GET, [](AsyncWebServerRequest *request){
 		getEepromReq = request;
 	});
+  server.on("/ajax/ssid-scan", HTTP_GET, [](AsyncWebServerRequest *request){
+    ssidScanReq = request;
+  });
 
   server.on("/ajax/set-eeprom", HTTP_OPTIONS, responseOK);
   server.on("/ajax/set-eeprom", HTTP_POST, responseOK, 0,

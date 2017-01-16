@@ -26,8 +26,13 @@ void initeeprom() {
     EEPROM.end();
 	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
 		ap_ssid_str.toCharArray(buf, 33);
+
     eepromPutStr(buf, 2);
     eepromPutStr("eridienxy", 35);
+
+		// debug
+		eepromPutStr("hahn-fi",      EEPROM_BYTES_OFS);
+		eepromPutStr("NBVcvbasd987", EEPROM_BYTES_OFS+33);
 	}
   EEPROM.end();
 }
