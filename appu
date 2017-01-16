@@ -1,10 +1,5 @@
 
 set -e
 
-cd ../../app
-npm run build
-rm -rf             ../arduino/xy/data/*
-cp dist/*          ../arduino/xy/data
-gzip               ../arduino/xy/data/*
-mkdir              ../arduino/xy/data/assets
-cp -a src/assets/* ../arduino/xy/data/assets
+./app
+pio run -t uploadfs
