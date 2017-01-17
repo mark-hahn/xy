@@ -7,6 +7,7 @@
 #include "xy-eeprom.h"
 
 AsyncWebServerRequest *ssidRequest;
+AsyncWebServerRequest *resetReq;
 AsyncWebServerRequest *eepromssidRequest;
 AsyncWebServerRequest *wifistatusRequest;
 bool connectAfterFormPost = false;
@@ -21,6 +22,12 @@ void responseOK(AsyncWebServerRequest *request) {
   response->addHeader("Access-Control-Allow-Headers",
     "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
   request->send(response);
+}
+
+void do_resetEeprom(AsyncWebServerRequest *request) {
+  ssidRequest = (AsyncWebServerRequest*) 0;
+  responseOK(request);
+  resetEeprom();
 }
 
 void do_ssids(AsyncWebServerRequest *request) {
@@ -141,6 +148,7 @@ void do_wifistatus(AsyncWebServerRequest *request) {
 
 void chkAjax() {
   if(ssidRequest)          do_ssids(ssidRequest);
+  if(resetReq)             do_resetEeprom(resetReq);
   if(eepromssidRequest)    do_eepromssids(eepromssidRequest);
   if(wifistatusRequest)    do_wifistatus(wifistatusRequest);
   if(connectAfterFormPost) find_and_connect_try();

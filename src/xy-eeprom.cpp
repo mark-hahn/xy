@@ -11,29 +11,30 @@
 #define magicByt1 0x7d
 #define magicByt2 0xde
 
-void initeeprom() {
+void resetEeprom() {
 	char buf[33];
-	int bufidx, eeAddr;
+	int eeAddr;
 	String ap_ssid_str;
+	EEPROM.begin(512);
+  Serial.println("** initializing eeprom, magic was: " +
+                  String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX) +
+									", now: " + String(magicByt1,HEX) + String(magicByt2,HEX));
+	EEPROM.write(0, magicByt1);
+	EEPROM.write(1, magicByt2);
+	for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
+  EEPROM.end();
+  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
+	ap_ssid_str.toCharArray(buf, 33);
+  eepromPutStr(buf, 2);
+  eepromPutStr("eridienxy", 35);
+}
+
+void initeeprom() {
   EEPROM.begin(512);
 	if (EEPROM.read(0) != magicByt1 || EEPROM.read(1) != magicByt2) {
-    Serial.println("** initializing eeprom, magic was: " +
-                    String(EEPROM.read(0),HEX) + String(EEPROM.read(1),HEX) +
-										", now: " + String(magicByt1,HEX) + String(magicByt2,HEX));
-		EEPROM.write(0, magicByt1);
-		EEPROM.write(1, magicByt2);
-		for (eeAddr=2; eeAddr < EEPROM_TOTAL_BYTES; eeAddr++) EEPROM.write(eeAddr, 0);
-    EEPROM.end();
-	  ap_ssid_str = "eridien_XY_" + String(ESP.getChipId(), HEX);
-		ap_ssid_str.toCharArray(buf, 33);
-    eepromPutStr(buf, 2);
-    eepromPutStr("eridienxy", 35);
-
-		// debug
-    // eepromPutStr("hahn-fi", 68);
-    // eepromPutStr("NBVcvbasd987", 101);
-	}
-  EEPROM.end();
+	  EEPROM.end();
+	  resetEeprom();
+	} else EEPROM.end();
 }
 
 int eepromGetStrWLen(char* res, int idx, int len){

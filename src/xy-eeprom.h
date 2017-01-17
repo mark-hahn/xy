@@ -17,6 +17,7 @@
 #define EEPROM_BYTES_PER_SSID 82
 #define EEPROM_TOTAL_BYTES    396
 
+void resetEeprom();
 void initeeprom();
 int eepromGetStr(char* res, int idx);
 int eepromGetIp(char* res, int idx);

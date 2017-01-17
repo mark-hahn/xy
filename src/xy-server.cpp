@@ -24,12 +24,16 @@ void setupServer() {
 
   server.addHandler(new SPIFFSEditor("admin","admin"));
 
-  server.on("/f", HTTP_GET, [](AsyncWebServerRequest *request){
+	server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request){
+		resetReq = request;
+	});
+  server.on("/update-fw", HTTP_GET, [](AsyncWebServerRequest *request){
     firmUpdateReq = request;
   });
-  server.on("/fs", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/update-fs", HTTP_GET, [](AsyncWebServerRequest *request){
     fsUpdateReq = request;
   });
+
   server.on("/ajax/ssid-scan", HTTP_GET, [](AsyncWebServerRequest *request){
     ssidRequest = request;
   });

@@ -5,6 +5,7 @@
 extern AsyncWebServerRequest *ssidRequest;
 extern AsyncWebServerRequest *eepromssidRequest;
 extern AsyncWebServerRequest *wifistatusRequest;
+extern AsyncWebServerRequest *resetReq;
 extern bool                   connectAfterFormPost;
 extern String                 eepromssidData;
 
