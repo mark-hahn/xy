@@ -1,5 +1,5 @@
 
 set -e
 
-./app
+s/app
 pio run -t buildfs
