@@ -13,6 +13,7 @@
 AsyncWebServer server(80);
 DNSServer dnsServer;
 File fileUpload;
+bool reqFromAp;
 
 void setupServer() {
 	const byte DNS_PORT = 53;
@@ -39,6 +40,7 @@ void setupServer() {
   });
 
   server.on("/ajax/wifi-status", HTTP_GET, [](AsyncWebServerRequest *request){
+    // Serial.println("/ajax/wifi-status");
     wifistatusRequest = request;
   });
 
@@ -62,7 +64,7 @@ void setupServer() {
   });
 
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
-    Serial.println("generate_204: " + request->url());
+    // Serial.println("generate_204: " + request->url());
     request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
                         "<p>Use <b>xy.local</b> or <b>192.168.4.1</b> "       +
                         "to access the XY application when using the WiFi access point <b>"  +
@@ -101,10 +103,19 @@ void setupServer() {
     }
   });
 
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+	server.serveStatic("/", SPIFFS, "/")
+	      .setFilter([](AsyncWebServerRequest *request){
+		reqFromAp = (request->client()->localIP().toString() ==
+		             String("192.168.4.1"));
+		Serial.println(String("****  request from ") +
+										(reqFromAp ? "AP" : "STA") + ": " + String(request->url()));
+		return false;
+	});
+
+	server.serveStatic("/", SPIFFS, "/") .setDefaultFile("index.html");
 
   server.onNotFound([](AsyncWebServerRequest *request){
-    Serial.println("File not found: " + request->url());
+    // Serial.println("File not found: " + request->url());
     request->send(404);
   });
 

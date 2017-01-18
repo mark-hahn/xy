@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 
 #include "xy-ajax.h"
+#include "xy-server.h"
 #include "xy-wifi.h"
 #include "xy-eeprom.h"
 
@@ -135,11 +136,13 @@ void eepromssidPost() {
 
 void do_wifistatus(AsyncWebServerRequest *request) {
   wifistatusRequest = (AsyncWebServerRequest*) 0;
-  char str[33];
-  String json = "[{\"apSsid\":\""  + String(ap_ssid)           + "\"," +
-                  "\"staSsid\":\"" + String(sta_ssid)            + "\"," +
+  String staIp = ((String(sta_ssid).length() == 0) ?
+                     "" :  WiFi.localIP().toString());
+  String json = "[{\"apSsid\":\""  + String(ap_ssid)            + "\"," +
+                  "\"staSsid\":\"" + String(sta_ssid)           + "\"," +
                   "\"apIp\":\""    + WiFi.softAPIP().toString() + "\"," +
-                  "\"staIp\":\""   + WiFi.localIP().toString()  + "\"}]";
+                  "\"staIp\":\""   + staIp                      + "\"," +
+                  "\"reqFromAp\":" + (reqFromAp ? "true" : "false") + "}]";
   AsyncWebServerResponse *response =
       request->beginResponse(200, "text/json", json);
   response->addHeader("Access-Control-Allow-Origin","*");
@@ -151,5 +154,5 @@ void chkAjax() {
   if(resetReq)             do_resetEeprom(resetReq);
   if(eepromssidRequest)    do_eepromssids(eepromssidRequest);
   if(wifistatusRequest)    do_wifistatus(wifistatusRequest);
-  if(connectAfterFormPost) find_and_connect_try();
+  if(connectAfterFormPost) find_and_connect_try(true);
 }

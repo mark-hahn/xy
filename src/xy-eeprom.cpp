@@ -8,7 +8,7 @@
 #include "xy-eeprom.h"
 #include "xy-wifi.h"
 
-#define magicByt1 0x7d
+#define magicByt1 0x7f
 #define magicByt2 0xde
 
 void resetEeprom() {
@@ -27,6 +27,10 @@ void resetEeprom() {
 	ap_ssid_str.toCharArray(buf, 33);
   eepromPutStr(buf, 2);
   eepromPutStr("eridienxy", 35);
+
+	//debug
+  eepromPutStr("hahn-fi", 68);
+  eepromPutStr("NBVcvbasd987", 101);
 }
 
 void initeeprom() {

@@ -3,4 +3,4 @@ set -e
 
 s/fwb
 
-curl http://192.168.1.244/update-fw
+curl http://192.168.1.243/update-fw

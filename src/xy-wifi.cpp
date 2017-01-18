@@ -15,10 +15,15 @@ int best_quality;
 
 void find_and_connect() {
   WiFi.mode(WIFI_AP_STA);
-  find_and_connect_try();
+  find_and_connect_try(false);
 }
 
-void find_and_connect_try() {
+void loginFailed() {
+  strcpy(sta_ssid, "");
+  strcpy(sta_pwd,  "");
+}
+
+void find_and_connect_try(bool rebootOnFailure) {
   connectAfterFormPost = false;
   ledBlink(true);
   eepromGetStr(ap_ssid, 2);
@@ -53,11 +58,14 @@ void find_and_connect_try() {
     if (WiFi.waitForConnectResult() != WL_CONNECTED) {
       Serial.println("STA connection failed");
       WiFi.disconnect(false);
+      if(rebootOnFailure) ESP.reset();
       delay(1000);
-      WiFi.begin(sta_ssid, sta_pwd);
-    }
-    Serial.println(String("STA address: ") + WiFi.localIP().toString());
-  } else
+      loginFailed();
+    } else
+      Serial.println(String("STA address: ") + WiFi.localIP().toString());
+  } else {
+    loginFailed();
     Serial.println("No STA match found in wifi scan");
+  }
   ledBlink(false);
 }
