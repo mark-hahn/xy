@@ -1,0 +1,160 @@
+
+
+X.Org X Server 1.15.1
+Release Date: 2014-04-13
+X Protocol Version 11, Revision 0
+Build Operating System: Linux 3.2.0-76-generic x86_64 Ubuntu
+Current Operating System: Linux localhost 3.18.0-13437-g2bea612c #1 SMP PREEMPT Fri Jan 6 23:52:09 PST 2017 x86_64
+Kernel command line: cros_secure console= loglevel=7 init=/sbin/init cros_secure oops=panic panic=-1 root=/dev/dm-0 rootwait ro dm_verity.error_behavior=3 dm_verity.max_bios=-1 dm_verity.dev_wait=1 dm="1 vroot none ro 1,0 3584000 verity payload=PARTUUID=2815ceec-8f5f-db4d-94c1-5d8af0597eef/PARTNROFF=1 hashtree=PARTUUID=2815ceec-8f5f-db4d-94c1-5d8af0597eef/PARTNROFF=1 hashstart=3584000 alg=sha1 root_hexdigest=cb8c7bedcb282886cebeb54a4a52798e60b08b86 salt=6bfa98fbc2ff608044191205fd5432ffc4d948e8d75b7dfb86311a0c98427992" noinitrd vt.global_cursor_default=0 kern_guid=2815ceec-8f5f-db4d-94c1-5d8af0597eef add_efi_memmap boot=local noresume noswap i915.modeset=1 tpm_tis.force=1 tpm_tis.interrupts=0 nmi_watchdog=panic,lapic intel_idle.max_cstate=7  
+Build Date: 12 February 2015  02:49:29PM
+xorg-server 2:1.15.1-0ubuntu2.7 (For technical support please see http://www.ubuntu.com/support) 
+Current version of pixman: 0.30.2
+	Before reporting problems, check http://wiki.x.org
+	to make sure that you have the latest version.
+Markers: (--) probed, (**) from config file, (==) default setting,
+	(++) from command line, (!!) notice, (II) informational,
+	(WW) warning, (EE) error, (NI) not implemented, (??) unknown.
+(++) Log file: "/tmp/Xorg.crouton.2.log", Time: Wed Jan 18 17:34:56 2017
+(++) Using config file: "/etc/X11/xorg-dummy.conf"
+(==) Using system config directory "/usr/share/X11/xorg.conf.d"
+Initializing built-in extension Generic Event Extension
+Initializing built-in extension SHAPE
+Initializing built-in extension MIT-SHM
+Initializing built-in extension XInputExtension
+Initializing built-in extension XTEST
+Initializing built-in extension BIG-REQUESTS
+Initializing built-in extension SYNC
+Initializing built-in extension XKEYBOARD
+Initializing built-in extension XC-MISC
+Initializing built-in extension SECURITY
+Initializing built-in extension XINERAMA
+Initializing built-in extension XFIXES
+Initializing built-in extension RENDER
+Initializing built-in extension RANDR
+Initializing built-in extension COMPOSITE
+Initializing built-in extension DAMAGE
+Initializing built-in extension MIT-SCREEN-SAVER
+Initializing built-in extension DOUBLE-BUFFER
+Initializing built-in extension RECORD
+Initializing built-in extension DPMS
+Initializing built-in extension Present
+Initializing built-in extension DRI3
+Initializing built-in extension X-Resource
+Initializing built-in extension XVideo
+Initializing built-in extension XVideo-MotionCompensation
+Initializing built-in extension SELinux
+Initializing built-in extension XFree86-VidModeExtension
+Initializing built-in extension XFree86-DGA
+Initializing built-in extension XFree86-DRI
+Initializing built-in extension DRI2
+Loading extension GLX
+/usr/bin/xinit: XFree86_VT property unexpectedly has 0 items instead of 1
+crouton: version 1-20161116131524~master:9db73043
+release: trusty
+architecture: amd64
+xmethod: xorg
+targets: xorg,xiwi,keyboard
+host: version 8872.76.0 (Official Build) stable-channel chell 
+kernel: Linux localhost 3.18.0-13437-g2bea612c #1 SMP PREEMPT Fri Jan 6 23:52:09 PST 2017 x86_64 x86_64 x86_64 GNU/Linux
+freon: yes
+Another instance of croutonclip running, waiting...
+Another instance of croutontriggerd running, waiting...
+Connected to extension, launched crouton in a window.
+deciding for version 4 due to this line: # i3 config file (v4)
+01/18/2017 05:34:57 PM - ERROR: Could not translate string to key symbol: "button2"
+content/mplab/mplab.deviceSupport
+content/mplab/PluginBoardSupport.xml
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+01/18/2017 05:54:37 PM - ERROR: Could not translate string to key symbol: "button2"
+01/18/2017 05:54:37 PM - ERROR: Could not translate string to key symbol: "button2"
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+01/18/2017 09:43:22 PM - ERROR: No output found at destination coordinates, centering floating window on current ws
+
+
+X.Org X Server 1.15.1
+Release Date: 2014-04-13
+X Protocol Version 11, Revision 0
+Build Operating System: Linux 3.2.0-76-generic x86_64 Ubuntu
+Current Operating System: Linux localhost 3.18.0-13437-g2bea612c #1 SMP PREEMPT Fri Jan 6 23:52:09 PST 2017 x86_64
+Kernel command line: cros_secure console= loglevel=7 init=/sbin/init cros_secure oops=panic panic=-1 root=/dev/dm-0 rootwait ro dm_verity.error_behavior=3 dm_verity.max_bios=-1 dm_verity.dev_wait=1 dm="1 vroot none ro 1,0 3584000 verity payload=PARTUUID=2815ceec-8f5f-db4d-94c1-5d8af0597eef/PARTNROFF=1 hashtree=PARTUUID=2815ceec-8f5f-db4d-94c1-5d8af0597eef/PARTNROFF=1 hashstart=3584000 alg=sha1 root_hexdigest=cb8c7bedcb282886cebeb54a4a52798e60b08b86 salt=6bfa98fbc2ff608044191205fd5432ffc4d948e8d75b7dfb86311a0c98427992" noinitrd vt.global_cursor_default=0 kern_guid=2815ceec-8f5f-db4d-94c1-5d8af0597eef add_efi_memmap boot=local noresume noswap i915.modeset=1 tpm_tis.force=1 tpm_tis.interrupts=0 nmi_watchdog=panic,lapic intel_idle.max_cstate=7  
+Build Date: 12 February 2015  02:49:29PM
+xorg-server 2:1.15.1-0ubuntu2.7 (For technical support please see http://www.ubuntu.com/support) 
+Current version of pixman: 0.30.2
+	Before reporting problems, check http://wiki.x.org
+	to make sure that you have the latest version.
+Markers: (--) probed, (**) from config file, (==) default setting,
+	(++) from command line, (!!) notice, (II) informational,
+	(WW) warning, (EE) error, (NI) not implemented, (??) unknown.
+(++) Log file: "/tmp/Xorg.crouton.2.log", Time: Fri Jan 20 16:12:52 2017
+(++) Using config file: "/etc/X11/xorg-dummy.conf"
+(==) Using system config directory "/usr/share/X11/xorg.conf.d"
+Initializing built-in extension Generic Event Extension
+Initializing built-in extension SHAPE
+Initializing built-in extension MIT-SHM
+Initializing built-in extension XInputExtension
+Initializing built-in extension XTEST
+Initializing built-in extension BIG-REQUESTS
+Initializing built-in extension SYNC
+Initializing built-in extension XKEYBOARD
+Initializing built-in extension XC-MISC
+Initializing built-in extension SECURITY
+Initializing built-in extension XINERAMA
+Initializing built-in extension XFIXES
+Initializing built-in extension RENDER
+Initializing built-in extension RANDR
+Initializing built-in extension COMPOSITE
+Initializing built-in extension DAMAGE
+Initializing built-in extension MIT-SCREEN-SAVER
+Initializing built-in extension DOUBLE-BUFFER
+Initializing built-in extension RECORD
+Initializing built-in extension DPMS
+Initializing built-in extension Present
+Initializing built-in extension DRI3
+Initializing built-in extension X-Resource
+Initializing built-in extension XVideo
+Initializing built-in extension XVideo-MotionCompensation
+Initializing built-in extension SELinux
+Initializing built-in extension XFree86-VidModeExtension
+Initializing built-in extension XFree86-DGA
+Initializing built-in extension XFree86-DRI
+Initializing built-in extension DRI2
+Loading extension GLX
+/usr/bin/xinit: XFree86_VT property unexpectedly has 0 items instead of 1
+crouton: version 1-20161116131524~master:9db73043
+release: trusty
+architecture: amd64
+xmethod: xorg
+targets: xorg,xiwi,keyboard
+host: version 8872.76.0 (Official Build) stable-channel chell 
+kernel: Linux localhost 3.18.0-13437-g2bea612c #1 SMP PREEMPT Fri Jan 6 23:52:09 PST 2017 x86_64 x86_64 x86_64 GNU/Linux
+freon: yes
+Another instance of croutonclip running, waiting...
+Another instance of croutontriggerd running, waiting...
+Connected to extension, launched crouton in a window.
+deciding for version 4 due to this line: # i3 config file (v4)
+01/20/2017 04:12:52 PM - ERROR: Could not translate string to key symbol: "button2"
+content/mplab/mplab.deviceSupport
+content/mplab/PluginBoardSupport.xml
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+01/20/2017 04:14:19 PM - ERROR: Could not translate string to key symbol: "button2"
+01/20/2017 04:14:19 PM - ERROR: Could not translate string to key symbol: "button2"
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
