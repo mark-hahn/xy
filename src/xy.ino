@@ -9,6 +9,7 @@
 #include "xy-wifi.h"
 #include "xy-ajax.h"
 #include "xy-server.h"
+#include "Wire.h"
 
 // 8266 pins
 #define RESET  16 /* D0 */
@@ -32,8 +33,20 @@ void setup() {
   setupServer();
 	find_and_connect();
   setupWebsocket();
+	
+	Wire.begin(SDA, SCL);  // also default
+  Wire.setClock(400000);
+	Wire.beginTransmission(1);
+	Wire.write(0xa5);
+  int error = Wire.endTransmission();
+	Serial.println(String("wire endTransmission error:") + error);
 
-	pinMode(SYNC, INPUT);
+	/*
+	Wire.requestFrom(1, 6);    // request 6 bytes from slave device #1
+  while(Wire.available())    // slave may send less than requested {
+    char c = Wire.read();    // receive a byte as character
+  }
+*/
 }
 
 void loop() {
