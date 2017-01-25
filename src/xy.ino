@@ -17,6 +17,9 @@
 void setup() {
 	delay(1000);
 
+	pinMode(SYNC, OUTPUT_OPEN_DRAIN);
+	digitalWrite(SYNC, HIGH);
+
 	Serial.begin(115200);
 	Serial.println(String("\n\nXY Control App Starting -- ") + VERSION);
 	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
@@ -30,8 +33,7 @@ void setup() {
 	  setupWebsocket();
 	}
 	initI2c();
-	char buf[1] = {homing};
-	writeI2c(1, offsetof(Bank, cmd), buf, 1);
+	testI2c();
 }
 
 void loop() {
@@ -40,4 +42,8 @@ void loop() {
 	  chkAjax();
 		chkUpdates();
 	}
+	delayMicroseconds(50);
+	digitalWrite(SYNC, LOW);
+	delayMicroseconds(50);
+	digitalWrite(SYNC, HIGH);
 }

@@ -31,7 +31,7 @@ typedef struct Bank {
   long velocity;
   long targetPos;
   Cmd  cmd;
-  int  reserved;  // for long alignment
+  char reserved[3];  // for long alignment
   // settings only in bank 0
   long homeApproachVel;
   long homeBackupVel;
@@ -47,5 +47,7 @@ typedef union RegBank {
 
 void initI2c();
 void writeI2c(char mcuAddr, char bankAddr, char *buf, char qty);
+
+void testI2c();
 
 #endif
