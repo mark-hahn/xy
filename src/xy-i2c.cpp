@@ -1,31 +1,20 @@
 
 
 #include <Arduino.h>
+#include "Wire.h"
 #include "xy.h"
 #include "xy-i2c.h"
-#include "Wire.h"
+#include "xy-driver.h"
 
 void initI2c() {
 	Wire.begin(SDA, SCL);  // also default
-  Wire.setClock(400000);
+  Wire.setClock(400000); // does nothing, core hacked to 700 KHz
 }
 
-void writeI2c(char mcuAddr, char bankAddr, char *buf, char qty) {
-	Wire.beginTransmission(mcuAddr);
-  Wire.write(bankAddr);
+void writeI2c(char mcu, char bankAddr, char *buf, char qty) {
+	Wire.beginTransmission(mcu);
+  Wire.write(bankAddr); // could also be immediate command
 	Wire.write(buf, qty);
   int error = Wire.endTransmission();
-	Serial.println(String("i2c send:") + error);
+	if(error) Serial.println(String("i2c error:") + error);
 }
-
-void testI2c() {
-	char buf[1] = {home};
-	writeI2c(1, offsetof(Bank, cmd), buf, 1);
-}
-
-/*
-	Wire.requestFrom(1, 6);    // request 6 bytes from slave device #1
-  while(Wire.available())    // slave may send less than requested {
-    char c = Wire.read();    // receive a byte as character
-  }
-*/

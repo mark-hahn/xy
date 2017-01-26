@@ -13,6 +13,14 @@
 #include "xy-ajax.h"
 #include "xy-server.h"
 #include "xy-i2c.h"
+#include "xy-driver.h"
+
+bool waitingForSync = false;
+bool getMcuState[2] = {false,false};
+unsigned long microStartTime = 0;
+
+void startMicroTimer() {microStartTime = micros();}
+long elapsedMicros() {micros() - microStartTime;}
 
 void setup() {
 	delay(1000);
@@ -25,25 +33,21 @@ void setup() {
 	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
 
 	SPIFFS.begin();
-	if (!debug) {
-		initeeprom();
-	  ledInit();
-	  setupServer();
-		find_and_connect();
-	  setupWebsocket();
-	}
+	initeeprom();
+  ledInit();
+  setupServer();
+	find_and_connect();
+  setupWebsocket();
 	initI2c();
-	testI2c();
+
+	char buf[5] = {home,home,home,home,home};
+	// writeI2c(1, offsetof(Bank, cmd), buf, 5);
+	writeI2c(1, startSync, buf, 0);
 }
 
 void loop() {
-	if (!debug) {
-		chkServer();
-	  chkAjax();
-		chkUpdates();
-	}
-	delayMicroseconds(50);
-	digitalWrite(SYNC, LOW);
-	delayMicroseconds(50);
-	digitalWrite(SYNC, HIGH);
+	chkServer();
+	chkAjax();
+	chkUpdates();
+	chkDriver();
 }

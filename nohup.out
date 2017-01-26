@@ -700,3 +700,4 @@ COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip 
 COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
 COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
 COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end
+COMM::=MPLABComm-USB-Microchip:=<vid>04D8:=<pid>900A:=<rev>0002:=<man>Microchip Technology Inc.:=<prod>PICkit 3:=<sn>BUR154274625:=<drv>x:=<xpt>h:=end

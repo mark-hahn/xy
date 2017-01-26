@@ -22,7 +22,9 @@ typedef enum Cmd {
   home,
   move,
   stop,
-  reset
+  reset,
+  startSync = 0x80,
+  stopSync  = 0x81
 } Cmd;
 
 typedef struct Bank {
@@ -46,8 +48,6 @@ typedef union RegBank {
 } RegBank;
 
 void initI2c();
-void writeI2c(char mcuAddr, char bankAddr, char *buf, char qty);
-
-void testI2c();
+void writeI2c(char mcu, char bankAddr, char *buf, char qty);
 
 #endif
