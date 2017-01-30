@@ -8,19 +8,24 @@
 os_timer_t ledTimer;
 bool ledBlinking;
 bool blinkLedIsOn;
+void ledBlinkCallback(void *pArg);
+
+void ledInit() {
+  pinMode(2, OUTPUT);
+  pinMode(14, OUTPUT);
+  // digitalWrite(14, 1);
+  os_timer_setfn(&ledTimer, ledBlinkCallback, NULL);
+}
 
 void ledBlinkCallback(void *pArg) {
   blinkLedIsOn = !blinkLedIsOn;
   if(blinkLedIsOn) led_on();
   else             led_off();
 }
-void ledInit() {
-  pinMode(2, OUTPUT);
-  os_timer_setfn(&ledTimer, ledBlinkCallback, NULL);
-}
 
-void led_on()  {digitalWrite(2, 0);}
-void led_off() {digitalWrite(2, 1);}
+void led_on()  {digitalWrite(2, 0); /* digitalWrite(14, 1);*/  }
+
+void led_off() {digitalWrite(2, 1); /* digitalWrite(14, 1);*/ }
 
 void ledBlink(bool turnBlinkOn) {
   if(!ledBlinking && turnBlinkOn) {

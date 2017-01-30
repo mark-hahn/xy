@@ -6,6 +6,8 @@
 #include "xy-server.h"
 #include "xy-wifi.h"
 #include "xy-eeprom.h"
+#include "xy-i2c.h"
+#include "xy-flash-mcu.h"
 
 AsyncWebServerRequest *ssidRequest;
 AsyncWebServerRequest *resetReq;
@@ -24,6 +26,49 @@ void responseOK(AsyncWebServerRequest *request) {
     "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
   request->send(response);
 }
+
+void ajaxToMcu(AsyncWebServerRequest *request) {
+  char i, i2cAddr=0xff, bankAddr=0xff, buf[16], qty = 0;
+  char paramCnt = request->params();
+  for(int i=0;i<paramCnt;i++){
+    AsyncWebParameter* p = request->getParam(i);
+    Serial.printf("param %s: %s\n", p->name().c_str(), p->value().c_str());
+    if(p->name() == "i2cAddr")  i2cAddr = p->value().toInt();
+    if(p->name() == "bankAddr") bankAddr = p->value().toInt();
+    if(p->name().startsWith("d")) {
+      Serial.println(p->name());
+      // char idx = p->name().replace('d','0').toInt();
+      char idx = 1;  // DEBUG
+      if(idx < 1 || idx > 15)
+        Serial.println("http ajaxToMcu invalid idx: " + String(idx));
+      else {
+        buf[idx-1] = p->value().toInt();
+        if(idx > qty) qty = idx;
+      }
+    }
+  }
+  responseOK(request);
+  if(i2cAddr != 0xff && bankAddr != 0xff) writeI2c(i2cAddr, bankAddr, buf, qty);
+  else Serial.println("http ajaxToMcu missing param (i2cAddr,bankAddr): " +
+                      String(i2cAddr) + ", " + bankAddr);
+}
+
+
+// TODO ********** process hex input ************
+
+
+void ajaxFlashMcu(unsigned int flashByteAddr, char *buf, unsigned int qty) {
+  // if(qty % 64 != 0) {
+  //   Serial.println(String("ajaxFlashMcu qty not multiple of 64, addr/qty: ") +
+  //                  flashByteAddr + ", " + qty);
+  //   return;
+  // }
+  // unsigned int idx;  //  bytes not words
+  // for(idx=0; idx < qty; idx += WRITE_FLASH_BLOCKSIZE*2)
+  //   flashMcu64Bytes(flashByteAddr+idx, &buf[idx*2]);
+}
+
+void ajaxResetMcu() { resetMcu(); }
 
 void do_resetEeprom(AsyncWebServerRequest *request) {
   ssidRequest = (AsyncWebServerRequest*) 0;

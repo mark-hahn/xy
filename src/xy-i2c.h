@@ -49,5 +49,7 @@ typedef union RegBank {
 
 void initI2c();
 void writeI2c(char mcu, char bankAddr, char *buf, char qty);
+void writeI2cRaw(char addr, char *buf, int qty);
+char readI2cRaw(char addr, char *buf, int qty);
 
 #endif

@@ -14,6 +14,7 @@
 #include "xy-server.h"
 #include "xy-i2c.h"
 #include "xy-driver.h"
+#include "xy-flash-mcu.h"
 
 bool waitingForSync = false;
 bool getMcuState[2] = {false,false};
@@ -40,9 +41,8 @@ void setup() {
   setupWebsocket();
 	initI2c();
 
-	char buf[5] = {home,home,home,home,home};
-	// writeI2c(1, offsetof(Bank, cmd), buf, 5);
-	writeI2c(1, startSync, buf, 0);
+	// test
+	sendMcuAddr(0x0102);
 }
 
 void loop() {

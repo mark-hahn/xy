@@ -63,6 +63,12 @@ void setupServer() {
     }
   });
 
+  server.on("/i2c", HTTP_GET, [](AsyncWebServerRequest *request){
+    digitalWrite(14, 1);
+		ajaxToMcu(request);
+    digitalWrite(14, 0);
+	});
+
   server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
     // Serial.println("generate_204: " + request->url());
     request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
@@ -102,6 +108,35 @@ void setupServer() {
       Serial.println("Upload End: " + filename + ", " + (index+len));
     }
   });
+
+  server.on("/flashMcu", HTTP_POST, [](AsyncWebServerRequest *request){
+    request->send(200);
+	}, 0, [](AsyncWebServerRequest *request,
+		    uint8_t *data, size_t len, size_t index, size_t total) {  // handleBody
+		static unsigned int flashAddr;
+    if(!index) {
+			if (!request->params()) {
+				Serial.println("flashMcu missing flashAddr param");
+				request->send(500);
+				return;
+			}
+			AsyncWebParameter* p = request->getParam(0);  // only one param allowed. byte address
+      if(p->name() == String("flashAddr")) {
+				flashAddr = p->value().toInt();
+        Serial.println(String("flashMcu atart addr, len, index, total: ") +
+										   flashAddr  + ", " + len + ", " + index + ", " + total);
+      } else {
+				Serial.println("invalid param in flashMcu: " + p->name());
+				request->send(500);
+        return;
+			}
+    }
+    if(len) ajaxFlashMcu(flashAddr+index, (char *) data, len);
+  });
+
+	server.on("/resetMcu", HTTP_GET, [](AsyncWebServerRequest *request){
+		ajaxResetMcu();
+	});
 
 	server.serveStatic("/", SPIFFS, "/")
 	      .setFilter([](AsyncWebServerRequest *request){

@@ -13,6 +13,9 @@ void responseOK(AsyncWebServerRequest *request);
 void do_ssids(AsyncWebServerRequest *request);
 void do_eepromssids(AsyncWebServerRequest *request);
 void eepromssidPost();
+void ajaxToMcu(AsyncWebServerRequest *request);
+void ajaxFlashMcu(unsigned int flashAddr, char *buf, unsigned int qty);
+void ajaxResetMcu();
 void chkAjax();
 
 
