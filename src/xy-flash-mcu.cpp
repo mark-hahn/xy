@@ -8,7 +8,7 @@ void sendMcuAddr(unsigned int flashWordAddr) {
   char buf[2];
   buf[0] = flashWordAddr >> 8;
   buf[1] = flashWordAddr & 0xff;
-  writeI2cRaw(12 /*addrI2cWriteAddr*/, buf, 2);
+  writeI2cRaw(addrI2cWriteAddr, buf, 2);
 }
 
 void sendMcuData(char *buf) {
