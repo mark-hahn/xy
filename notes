@@ -1,5 +1,15 @@
 
-- need hw switch to erase eeprom on reset
+- need hw switch to erase eeprom on reset?
     switch from A0 to VCC
 
-- no need for hlim and vlim pullups
+- write "move motor" code in mcu
+
+- parse mcu hex files in cpu - load from server
+
+- route commands to/from different MCUs
+
+- parse g-code in cpu
+
+- terminal in app
+
+- rest of app

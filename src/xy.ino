@@ -42,7 +42,7 @@ void setup() {
 	initI2c();
 
 	// test
-	// sendMcuAddr(0x0102);
+	sendMcuAddr(0x0102);
 }
 
 void loop() {
