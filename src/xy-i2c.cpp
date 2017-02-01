@@ -25,7 +25,7 @@ void writeI2cRaw(char i2cAddr, char *buf, int qty) {
 	Wire.beginTransmission(i2cAddr);
 	Wire.write(buf, qty);
   int error = Wire.endTransmission();
-	if(error) Serial.println(String("i2c raw error error, addr, qty: ") + error +
+	if(error) Serial.println(String("i2c raw, error, addr, qty: ") + error +
                            ", " + ((int)i2cAddr) + ", " + qty);
 }
 

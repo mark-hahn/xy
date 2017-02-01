@@ -1,6 +1,6 @@
 
 
-#define VERSION "version 0.3"
+#define VERSION "version 0.4"
 
 #define debug true
 
@@ -40,9 +40,6 @@ void setup() {
 	find_and_connect();
   setupWebsocket();
 	initI2c();
-
-	// test
-	sendMcuAddr(0x0102);
 }
 
 void loop() {

@@ -53,19 +53,44 @@ void ajaxToMcu(AsyncWebServerRequest *request) {
                       String(i2cAddr) + ", " + bankAddr);
 }
 
+char hexDigit2int(char hex) {
+  if(hex <= '9') return hex-'0';
+  if(hex <= 'F') return hex-'A'+10;
+  if(hex <= 'f') return hex-'a'+10;
+  return 0;
+}
+char hexByte2int(const char *hex, char idx) {
+  return (hexDigit2int(hex[idx]) << 4) | hexDigit2int(hex[idx+1]);
+}
 
-// TODO ********** process hex input ************
+unsigned int upperBytesAddr = 0;
 
+void ajaxFlashHexLine(const char *line) {
+  Serial.println(String("ajaxFlashHexLine: ") + line);
 
-void ajaxFlashMcu(unsigned int flashByteAddr, char *buf, unsigned int qty) {
-  // if(qty % 64 != 0) {
-  //   Serial.println(String("ajaxFlashMcu qty not multiple of 64, addr/qty: ") +
-  //                  flashByteAddr + ", " + qty);
-  //   return;
-  // }
-  // unsigned int idx;  //  bytes not words
-  // for(idx=0; idx < qty; idx += WRITE_FLASH_BLOCKSIZE*2)
-  //   flashMcu64Bytes(flashByteAddr+idx, &buf[idx*2]);
+  if(line[0] != ':') return;
+  char buf[65];
+  char i, len = hexByte2int(line, 1);
+  if (len > 64) return;
+  char addrH = hexByte2int(line, 3);
+  char addrL = hexByte2int(line, 5);
+  unsigned int addr = (addrH << 8) | addrL;
+  char type = hexByte2int(line, 7);
+  char cksum = len + addrH + addrL + type;
+  for (i=0; i <= len; i++) {
+    char byte = hexByte2int(line, 9+i*2);
+    buf[i] = byte; // extra cksum byte is after len bytes
+    cksum += byte;
+  }
+  if(cksum != 0) {
+    Serial.println(String("hex line checksum error: ") + line);
+    return;
+  }
+  switch (type) {
+    case 4: upperBytesAddr = (buf[0] << 8) | buf[1];
+    case 0: flashMcuBytes((upperBytesAddr << 16) | addr, buf, len); break;
+    case 1: upperBytesAddr = 0; endFlashMcuBytes(); break;
+  }
 }
 
 void ajaxResetMcu() { resetMcu(); }

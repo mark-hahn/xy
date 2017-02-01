@@ -12,11 +12,13 @@
 
 #define ERASE_FLASH_BLOCKSIZE 32 /* words */
 #define WRITE_FLASH_BLOCKSIZE 32 /* words */
+#define WRITE_FLASH_BLOCK_LEFT_MASK  0xffc0 /* bytes */
+#define WRITE_FLASH_BLOCK_RIGHT_MASK 0x003f /* bytes */
 #define APP_FLASH_ADDR     0x200 /* 512 byte bootloader */
 
 void sendMcuAddr(unsigned int flashWordAddr);  // for testing
-
-void flashMcu64Bytes(unsigned int flashAddr, char *buf);
+void flashMcuBytes(unsigned int flashByteAddr, char *buf, char qty);
+void endFlashMcuBytes();
 void resetMcu();
 
 #endif

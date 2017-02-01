@@ -25,11 +25,50 @@ void triggerMcuFlash() {
   readI2cRaw(flashI2cReadAddr, buf, 1);
 }
 
-void flashMcu64Bytes(unsigned int flashByteAddr, char *buf) {
-  sendMcuAddr(flashByteAddr >> 1);
-  sendMcuData(buf);
-  triggerMcuErase();
-  triggerMcuFlash();
+unsigned int lastBlockByteAddr = 0xffff;
+char mcuBuf[WRITE_FLASH_BLOCKSIZE*2], mcuBufEmpty=1;
+
+void flashMcuBytes(unsigned int flashByteAddr, char *buf, char qty) {
+  char i;
+  if(mcuBufEmpty)
+    for(i=0; i<WRITE_FLASH_BLOCKSIZE*2; i++) mcuBuf[i] = 0xff;
+  unsigned int blockByteAddr = flashByteAddr & WRITE_FLASH_BLOCK_LEFT_MASK;
+  if(blockByteAddr != lastBlockByteAddr && lastBlockByteAddr != 0xffff) {
+
+    Serial.println(String("sendMcuAddr, blockByteAddr, lastBlockByteAddr, mcuBufEmpty: ") +
+        blockByteAddr + ", " + lastBlockByteAddr +   ", " + (int) mcuBufEmpty);
+
+    sendMcuAddr(lastBlockByteAddr >> 1);
+    sendMcuData(mcuBuf);
+    triggerMcuErase();
+    triggerMcuFlash();
+    for(i=0; i<WRITE_FLASH_BLOCKSIZE*2; i++) mcuBuf[i] = 0xff;
+    mcuBufEmpty = 1;
+  }
+  for(i=0; i < qty; i++)
+    mcuBuf[(flashByteAddr + i) & WRITE_FLASH_BLOCK_RIGHT_MASK] = buf[i];
+  mcuBufEmpty = 0;
+  lastBlockByteAddr = blockByteAddr;
+}
+void endFlashMcuBytes() {
+  Serial.print("endFlashMcuBytes, ");
+  if(!mcuBufEmpty) {
+
+    Serial.println(String("lastBlockByteAddr, 0-4: ") +
+           lastBlockByteAddr + ", " +
+           (int) mcuBuf[0]   + ", " +
+           (int) mcuBuf[1]   + ", " +
+           (int) mcuBuf[2]   + ", " +
+           (int) mcuBuf[3]   + ", " +
+           (int) mcuBuf[4]);
+
+    sendMcuAddr(lastBlockByteAddr >> 1);
+    sendMcuData(mcuBuf);
+    triggerMcuErase();
+    triggerMcuFlash();
+    mcuBufEmpty = 1;
+    lastBlockByteAddr = 0xffff;
+  }
 }
 
 void resetMcu() {
