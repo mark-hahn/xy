@@ -6,8 +6,8 @@
 #include "xy-server.h"
 #include "xy-wifi.h"
 #include "xy-eeprom.h"
-#include "xy-i2c.h"
-#include "xy-flash-mcu.h"
+// #include "xy-i2c.h"
+// #include "xy-flash-mcu.h"
 
 AsyncWebServerRequest *ssidRequest;
 AsyncWebServerRequest *resetReq;
@@ -27,32 +27,32 @@ void responseOK(AsyncWebServerRequest *request) {
   request->send(response);
 }
 
-void ajaxToMcu(AsyncWebServerRequest *request) {
-  char i, i2cAddr=0xff, bankAddr=0xff, buf[16], qty = 0;
-  char paramCnt = request->params();
-  for(int i=0;i<paramCnt;i++){
-    AsyncWebParameter* p = request->getParam(i);
-    Serial.printf("param %s: %s\n", p->name().c_str(), p->value().c_str());
-    if(p->name() == "i2cAddr")  i2cAddr = p->value().toInt();
-    if(p->name() == "bankAddr") bankAddr = p->value().toInt();
-    if(p->name().startsWith("d")) {
-      Serial.println(p->name());
-      // char idx = p->name().replace('d','0').toInt();
-      char idx = 1;  // DEBUG
-      if(idx < 1 || idx > 15)
-        Serial.println("http ajaxToMcu invalid idx: " + String(idx));
-      else {
-        buf[idx-1] = p->value().toInt();
-        if(idx > qty) qty = idx;
-      }
-    }
-  }
-  responseOK(request);
-  if(i2cAddr != 0xff && bankAddr != 0xff) writeI2c(i2cAddr, bankAddr, buf, qty);
-  else Serial.println("http ajaxToMcu missing param (i2cAddr,bankAddr): " +
-                      String(i2cAddr) + ", " + bankAddr);
-}
-
+// void ajaxToMcu(AsyncWebServerRequest *request) {
+//   char i, i2cAddr=0xff, cmd=0xff, buf[16], qty = 0;
+//   char paramCnt = request->params();
+//   for(int i=0;i<paramCnt;i++){
+//     AsyncWebParameter* p = request->getParam(i);
+//     Serial.printf("param %s: %s\n", p->name().c_str(), p->value().c_str());
+//     if(p->name() == "i2cAddr")  i2cAddr = p->value().toInt();
+//     if(p->name() == "cmd") cmd = p->value().toInt();
+//     if(p->name().startsWith("d")) {
+//       String valStr = p->name();
+//       valStr.replace('d','0');
+//       char idx = valStr.toInt();
+//       if(idx < 1 || idx > 15)
+//         Serial.println("http ajaxToMcu invalid idx: " + String(idx));
+//       else {
+//         buf[idx-1] = p->value().toInt();
+//         if(idx > qty) qty = idx;
+//       }
+//     }
+//   }
+//   responseOK(request);
+//   if(i2cAddr != 0xff && cmd != 0xff) writeI2c(i2cAddr, cmd, buf, qty);
+//   else Serial.println("http ajaxToMcu missing param (i2cAddr,cmd): " +
+//                       String(i2cAddr) + ", " + cmd);
+// }
+//
 char hexDigit2int(char hex) {
   if(hex <= '9') return hex-'0';
   if(hex <= 'F') return hex-'A'+10;
@@ -65,35 +65,35 @@ char hexByte2int(const char *hex, char idx) {
 
 unsigned int upperBytesAddr = 0;
 
-void ajaxFlashHexLine(const char *line) {
-  Serial.println(String("ajaxFlashHexLine: ") + line);
+// void ajaxFlashHexLine(const char *line) {
+//   Serial.println(String("ajaxFlashHexLine: ") + line);
+//
+//   if(line[0] != ':') return;
+//   char buf[65];
+//   char i, len = hexByte2int(line, 1);
+//   if (len > 64) return;
+//   char addrH = hexByte2int(line, 3);
+//   char addrL = hexByte2int(line, 5);
+//   unsigned int addr = (addrH << 8) | addrL;
+//   char type = hexByte2int(line, 7);
+//   char cksum = len + addrH + addrL + type;
+//   for (i=0; i <= len; i++) {
+//     char byte = hexByte2int(line, 9+i*2);
+//     buf[i] = byte; // extra cksum byte is after len bytes
+//     cksum += byte;
+//   }
+//   if(cksum != 0) {
+//     Serial.println(String("hex line checksum error: ") + line);
+//     return;
+//   }
+//   switch (type) {
+//     case 4: upperBytesAddr = (buf[0] << 8) | buf[1];
+//     case 0: flashMcuBytes((upperBytesAddr << 16) | addr, buf, len); break;
+//     case 1: upperBytesAddr = 0; endFlashMcuBytes(); break;
+//   }
+// }
 
-  if(line[0] != ':') return;
-  char buf[65];
-  char i, len = hexByte2int(line, 1);
-  if (len > 64) return;
-  char addrH = hexByte2int(line, 3);
-  char addrL = hexByte2int(line, 5);
-  unsigned int addr = (addrH << 8) | addrL;
-  char type = hexByte2int(line, 7);
-  char cksum = len + addrH + addrL + type;
-  for (i=0; i <= len; i++) {
-    char byte = hexByte2int(line, 9+i*2);
-    buf[i] = byte; // extra cksum byte is after len bytes
-    cksum += byte;
-  }
-  if(cksum != 0) {
-    Serial.println(String("hex line checksum error: ") + line);
-    return;
-  }
-  switch (type) {
-    case 4: upperBytesAddr = (buf[0] << 8) | buf[1];
-    case 0: flashMcuBytes((upperBytesAddr << 16) | addr, buf, len); break;
-    case 1: upperBytesAddr = 0; endFlashMcuBytes(); break;
-  }
-}
-
-void ajaxResetMcu() { resetMcu(); }
+// void ajaxResetMcu() { resetMcu(); }
 
 void do_resetEeprom(AsyncWebServerRequest *request) {
   ssidRequest = (AsyncWebServerRequest*) 0;

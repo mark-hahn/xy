@@ -34,9 +34,9 @@ void setupServer() {
   server.on("/update-fs", HTTP_GET, [](AsyncWebServerRequest *request){
     fsUpdateReq = request;
   });
-  server.on("/update-mcu", HTTP_GET, [](AsyncWebServerRequest *request){
-    mcuUpdateReq = request;
-  });
+  // server.on("/update-mcu", HTTP_GET, [](AsyncWebServerRequest *request){
+  //   mcuUpdateReq = request;
+  // });
   server.on("/ajax/ssid-scan", HTTP_GET, [](AsyncWebServerRequest *request){
     ssidRequest = request;
   });
@@ -65,25 +65,25 @@ void setupServer() {
     }
   });
 
-  server.on("/i2c", HTTP_GET, [](AsyncWebServerRequest *request){
-    digitalWrite(14, 1);
-		ajaxToMcu(request);
-    digitalWrite(14, 0);
-	});
-
-  server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
-    // Serial.println("generate_204: " + request->url());
-    request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
-                        "<p>Use <b>xy.local</b> or <b>192.168.4.1</b> "       +
-                        "to access the XY application when using the WiFi access point <b>"  +
-                         String(ap_ssid) + "</b> you are using now. </p>"       +
-                        "<p>When using your normal WiFi access point, use <b>xy.local</b>"     +
-         (sta_ssid[0] ? " or <b>" + WiFi.localIP().toString() + "</b>." :
-                        String(". If <b>xy.local</b> does not work, you will need to ") +
-                        "find the XY ip address.  See the documentation.")    +
-                        "</p></div></center>");
-  });
-
+  // server.on("/i2c", HTTP_GET, [](AsyncWebServerRequest *request){
+  //   digitalWrite(14, 1);
+	// 	ajaxToMcu(request);
+  //   digitalWrite(14, 0);
+	// });
+	//
+  // server.on("/generate_204", HTTP_GET, [](AsyncWebServerRequest *request){
+  //   // Serial.println("generate_204: " + request->url());
+  //   request->send(200, "text/html", String( "<center><div style=\"width:50%\">") +
+  //                       "<p>Use <b>xy.local</b> or <b>192.168.4.1</b> "       +
+  //                       "to access the XY application when using the WiFi access point <b>"  +
+  //                        String(ap_ssid) + "</b> you are using now. </p>"       +
+  //                       "<p>When using your normal WiFi access point, use <b>xy.local</b>"     +
+  //        (sta_ssid[0] ? " or <b>" + WiFi.localIP().toString() + "</b>." :
+  //                       String(". If <b>xy.local</b> does not work, you will need to ") +
+  //                       "find the XY ip address.  See the documentation.")    +
+  //                       "</p></div></center>");
+  // });
+	//
   server.on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
     request->send(200);
   }, [](AsyncWebServerRequest *request, const String& filename,
@@ -111,23 +111,23 @@ void setupServer() {
     }
   });
 
-  server.on("/flashMcu", HTTP_GET, [](AsyncWebServerRequest *request) {
-		if (!request->params() ||
-		     request->getParam(0)->name() != String("hexline")) {
-			Serial.println("flashMcu first param isn't hexline, url: " + request->url());
-			request->send(500);
-		}
-		else {
-	    Serial.println("flashMcu hexline: " + request->getParam(0)->value());
-			ajaxFlashHexLine(request->getParam(0)->value().c_str());
-	    request->send(200);
-		}
-  });
-
-	server.on("/resetMcu", HTTP_GET, [](AsyncWebServerRequest *request){
-		ajaxResetMcu();
-	});
-
+  // server.on("/flashMcu", HTTP_GET, [](AsyncWebServerRequest *request) {
+	// 	if (!request->params() ||
+	// 	     request->getParam(0)->name() != String("hexline")) {
+	// 		Serial.println("flashMcu first param isn't hexline, url: " + request->url());
+	// 		request->send(500);
+	// 	}
+	// 	else {
+	//     Serial.println("flashMcu hexline: " + request->getParam(0)->value());
+	// 		ajaxFlashHexLine(request->getParam(0)->value().c_str());
+	//     request->send(200);
+	// 	}
+  // });
+	//
+	// server.on("/resetMcu", HTTP_GET, [](AsyncWebServerRequest *request){
+	// 	ajaxResetMcu();
+	// });
+	//
 	server.serveStatic("/", SPIFFS, "/")
 	      .setFilter([](AsyncWebServerRequest *request){
 		reqFromAp = (request->client()->localIP().toString() ==

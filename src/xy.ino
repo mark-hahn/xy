@@ -12,12 +12,10 @@
 #include "xy-wifi.h"
 #include "xy-ajax.h"
 #include "xy-server.h"
-#include "xy-i2c.h"
+// #include "xy-i2c.h"
 #include "xy-driver.h"
-#include "xy-flash-mcu.h"
+// #include "xy-flash-mcu.h"
 
-bool waitingForSync = false;
-bool getMcuState[2] = {false,false};
 unsigned long microStartTime = 0;
 
 void startMicroTimer() {microStartTime = micros();}
@@ -26,8 +24,7 @@ long elapsedMicros() {micros() - microStartTime;}
 void setup() {
 	delay(1000);
 
-	pinMode(SYNC, OUTPUT_OPEN_DRAIN);
-	digitalWrite(SYNC, HIGH);
+	pinMode(SYNC, INPUT);
 
 	Serial.begin(115200);
 	Serial.println(String("\n\nXY Control App Starting -- ") + VERSION);
@@ -39,7 +36,7 @@ void setup() {
   setupServer();
 	find_and_connect();
   setupWebsocket();
-	initI2c();
+	// initI2c();
 }
 
 void loop() {

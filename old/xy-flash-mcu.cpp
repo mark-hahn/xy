@@ -1,8 +1,8 @@
 
 
 #include <Arduino.h>
-#include "xy-flash-mcu.h"
-#include "xy-i2c.h"
+// #include "xy-flash-mcu.h"
+// #include "xy-i2c.h"
 
 void sendMcuAddr(unsigned int flashWordAddr) {
   char buf[2];
