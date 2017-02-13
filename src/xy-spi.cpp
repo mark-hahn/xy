@@ -2,7 +2,7 @@
 #include <SPI.h>
 #include "xy-spi.h"
 
-char b;
+char byteBack;
 
 // void word2mcu(unsigned long word) {
 void word2mcu(char byte) {
@@ -23,7 +23,7 @@ void word2mcu(char byte) {
 
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
   // SPI.write32(word);
-  b = SPI.transfer(byte);
+  byteBack = SPI.transfer(byte);
   SPI.endTransaction();
   // Serial.println(b, HEX);
   // Serial.println(in[0], HEX);
