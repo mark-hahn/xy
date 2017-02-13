@@ -60,6 +60,9 @@ void loop() {
 	delayMicroseconds(25);
 	digitalWrite(CS,0);
 	word2mcu(0x12);
+
+	Serial.println(byteBack, HEX);
+
 	delayMicroseconds(25);
 	word2mcu(0x34);
 	delayMicroseconds(25);
@@ -67,6 +70,4 @@ void loop() {
 	delayMicroseconds(25);
 	word2mcu(0x78);
 	digitalWrite(CS,1);
-
-	Serial.println(byteBack);
 }
