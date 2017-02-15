@@ -1,33 +1,43 @@
 
 #include <SPI.h>
 #include "xy-spi.h"
+#include "mcu-cpu.h"
 
-char byteBack;
+#define wordDelay 25  // microseconds between words
+#define byteDelay 10  // microseconds between bytes
 
-// void word2mcu(unsigned long word) {
-void word2mcu(char byte) {
-  /* cpol, cphase, output edge, input edge
-    SPI_MODE0	0	0	Falling	Rising
-    SPI_MODE1	0	1	Rising	Falling
-    SPI_MODE2	1	0	Rising	Falling
-    SPI_MODE3	1	1	Falling	Rising
-  */
-  // uint8_t out[4];
-  // uint8_t in[4];
-  //
-  // *((unsigned long*) &out) = word;
-  // Serial.println(out[0], HEX);
-  // Serial.println(out[1], HEX);
-  // Serial.println(out[2], HEX);
-  // Serial.println(out[3], HEX);
-
+uint8_t byte2mcuWByteBack(uint8_t byte) {
+  char bb;
   SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  // SPI.write32(word);
-  byteBack = SPI.transfer(byte);
+  bb = SPI.transfer(byte);
   SPI.endTransaction();
-  // Serial.println(b, HEX);
-  // Serial.println(in[0], HEX);
-  // Serial.println(in[1], HEX);
-  // Serial.println(in[2], HEX);
-  // Serial.println(in[3], HEX);
+  return bb;
+}
+
+void byte2mcu(uint8_t byte) {
+  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  SPI.write(byte);
+  SPI.endTransaction();
+}
+
+// returns first and only reply byte
+uint8_t word2mcu(uint32_t word) {
+  char byteBack;
+  // it's a shame to have to do this first delay
+  delayMicroseconds(wordDelay);
+
+  digitalWrite(CS, 0); // slave select low
+  byteBack = byte2mcuWByteBack(word >> 24);
+
+  delayMicroseconds(byteDelay);
+  byte2mcu((word & 0x00ff0000) >> 16);
+
+  delayMicroseconds(byteDelay);
+  byte2mcu((word & 0x0000ff00) >> 8);
+
+  delayMicroseconds(byteDelay);
+  byte2mcu(word & 0x000000ff);
+
+  digitalWrite(CS, 1); // slave select high
+  return byteBack;
 }

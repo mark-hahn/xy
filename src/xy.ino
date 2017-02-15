@@ -14,10 +14,9 @@
 #include "xy-wifi.h"
 #include "xy-ajax.h"
 #include "xy-server.h"
-// #include "xy-i2c.h"
 #include "xy-driver.h"
-// #include "xy-flash-mcu.h"
 #include "xy-spi.h"
+#include "mcu-cpu.h"
 
 unsigned long microStartTime = 0;
 
@@ -33,6 +32,7 @@ void setup() {
 	pinMode(CS,  OUTPUT);
 	pinMode(SCK, OUTPUT); // sck
 	digitalWrite(CS,1);
+	pinMode(12, INPUT);
 	// pinMode(SYNC, INPUT);
 
 	SPI.begin();
@@ -48,8 +48,11 @@ void setup() {
   setupServer();
 	find_and_connect();
   // setupWebsocket();
-	// initI2c();
 }
+
+char status = 0;
+char oldstatus = 0;
+bool_t firstCmd = TRUE;
 
 void loop() {
 	chkServer();
@@ -57,17 +60,22 @@ void loop() {
 	chkUpdates();
 	// chkDriver();
 
-	delayMicroseconds(25);
-	digitalWrite(CS,0);
-	word2mcu(0x12);
+	if(status != oldstatus) {
+    oldstatus = status;
+		Serial.print("Status from MCU: "); Serial.println(status, HEX);
+	}
+	if(firstCmd)
+	  status = word2mcu(homeCmd << 24);
+	else
+		status = word2mcu(0);
 
-	Serial.println(byteBack, HEX);
+	if(status != 0) firstCmd = FALSE;
 
-	delayMicroseconds(25);
-	word2mcu(0x34);
-	delayMicroseconds(25);
-	word2mcu(0x56);
-	delayMicroseconds(25);
-	word2mcu(0x78);
-	digitalWrite(CS,1);
+	if(status & 0x0f) {
+		oldstatus = status;
+    Serial.print("Error from MCU: "); Serial.println(status, HEX);
+		delay(1000);
+		status = word2mcu(clearErrorCmd << 24);
+		delay(1000);
+	}
 }
