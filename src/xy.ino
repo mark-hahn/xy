@@ -14,10 +14,9 @@
 #include "xy-wifi.h"
 #include "xy-ajax.h"
 #include "xy-server.h"
-// #include "xy-i2c.h"
 #include "xy-driver.h"
-// #include "xy-flash-mcu.h"
 #include "xy-spi.h"
+#include "mcu-cpu.h"
 
 unsigned long microStartTime = 0;
 
@@ -39,6 +38,10 @@ void setup() {
   // setupWebsocket();
 	initSpi();
 }
+
+char status = 0;
+char oldstatus = 0;
+bool_t firstCmd = TRUE;
 
 void loop() {
 	chkServer();

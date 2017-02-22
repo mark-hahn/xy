@@ -1,6 +1,7 @@
 
 #include <SPI.h>
 #include "xy-spi.h"
+#include "mcu-cpu.h"
 
 #define SCK 14
 

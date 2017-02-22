@@ -97,7 +97,8 @@ typedef enum Error {
   errorVecBufUnderflow   = 4,
   errorMoveWhenUnlocked  = 5,
   errorMoveWithNoVectors = 6,
-  errorSpiByteSync       = 7
+  errorSpiByteSync       = 7,
+  errorSpiInt            = 8
 } Error;
 
 
