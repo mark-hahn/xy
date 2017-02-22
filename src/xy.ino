@@ -27,17 +27,6 @@ long elapsedMicros() {micros() - microStartTime;}
 void setup() {
 	delay(1000);
 
-	#define CS  15
-	#define SCK 14
-
-	pinMode(CS,  OUTPUT);
-	pinMode(SCK, OUTPUT); // sck
-	digitalWrite(CS,1);
-	// pinMode(SYNC, INPUT);
-
-	SPI.begin();
-	SPI.setHwCs(false);
-
 	Serial.begin(115200);
 	Serial.println(String("\n\nXY Control App Starting -- ") + VERSION);
 	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
@@ -48,7 +37,7 @@ void setup() {
   setupServer();
 	find_and_connect();
   // setupWebsocket();
-	// initI2c();
+	initSpi();
 }
 
 void loop() {
@@ -56,18 +45,5 @@ void loop() {
 	chkAjax();
 	chkUpdates();
 	// chkDriver();
-
-	delayMicroseconds(25);
-	digitalWrite(CS,0);
-	word2mcu(0x12);
-
-	Serial.println(byteBack, HEX);
-
-	delayMicroseconds(25);
-	word2mcu(0x34);
-	delayMicroseconds(25);
-	word2mcu(0x56);
-	delayMicroseconds(25);
-	word2mcu(0x78);
-	digitalWrite(CS,1);
+  word2mcu(0x01000000, 0);
 }

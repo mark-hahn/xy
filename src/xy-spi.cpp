@@ -2,32 +2,43 @@
 #include <SPI.h>
 #include "xy-spi.h"
 
+#define SCK 14
+
+int32 speedByMcu[3] = {4000000, 4000000, 4000000};
+char  ssPinByMcu[3] = {15, 16, 0};
+
+void initSpi() {
+  pinMode(SCK, OUTPUT); // why?
+  for (char mcu=0; mcu < 3; mcu++) {
+    digitalWrite(ssPinByMcu[mcu],1); // should this be before or after pinMode ?
+    pinMode(ssPinByMcu[mcu], OUTPUT);
+    digitalWrite(ssPinByMcu[mcu],1);
+  }
+	SPI.begin();
+	SPI.setHwCs(false);  // our code will drive SS, not library
+}
+
 char byteBack;
 
-// void word2mcu(unsigned long word) {
-void word2mcu(char byte) {
-  /* cpol, cphase, output edge, input edge
-    SPI_MODE0	0	0	Falling	Rising
-    SPI_MODE1	0	1	Rising	Falling
-    SPI_MODE2	1	0	Rising	Falling
-    SPI_MODE3	1	1	Falling	Rising
-  */
-  // uint8_t out[4];
-  // uint8_t in[4];
-  //
-  // *((unsigned long*) &out) = word;
-  // Serial.println(out[0], HEX);
-  // Serial.println(out[1], HEX);
-  // Serial.println(out[2], HEX);
-  // Serial.println(out[3], HEX);
-
-  SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
-  // SPI.write32(word);
+void byte2mcu(char byte, char mcu) {
+  SPI.beginTransaction(SPISettings(speedByMcu[mcu], MSBFIRST, SPI_MODE0));
   byteBack = SPI.transfer(byte);
   SPI.endTransaction();
-  // Serial.println(b, HEX);
-  // Serial.println(in[0], HEX);
-  // Serial.println(in[1], HEX);
-  // Serial.println(in[2], HEX);
-  // Serial.println(in[3], HEX);
+}
+
+char word2mcu(uint32_t word, char mcu) {
+	delayMicroseconds(25);
+	digitalWrite(ssPinByMcu[mcu],0);
+
+	byte2mcu(word >> 24, mcu);
+	delayMicroseconds(25);
+
+	byte2mcu((word & 0x00ff0000) >> 16, mcu);
+	delayMicroseconds(25);
+
+	byte2mcu((word & 0x0000ff00) >> 8, mcu);
+	delayMicroseconds(25);
+
+	byte2mcu(word & 0x000000ff, mcu);
+	digitalWrite(ssPinByMcu[mcu],1);
 }

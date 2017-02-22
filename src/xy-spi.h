@@ -3,6 +3,8 @@
 #define _SPI
 
 extern char byteBack;
-void word2mcu(char byte);
+
+void initSpi();
+char word2mcu(uint32_t word, char mcu);
 
 #endif
