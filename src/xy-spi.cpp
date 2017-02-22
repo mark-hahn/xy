@@ -3,6 +3,8 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
+#define BYTE_DELAY 20   // usecs between bytes
+
 #define SCK 14
 
 int32 speedByMcu[3] = {4000000, 4000000, 4000000};
@@ -28,18 +30,21 @@ void byte2mcu(char byte, char mcu) {
 }
 
 char word2mcu(uint32_t word, char mcu) {
-	delayMicroseconds(25);
+	delayMicroseconds(BYTE_DELAY);
 	digitalWrite(ssPinByMcu[mcu],0);
 
 	byte2mcu(word >> 24, mcu);
-	delayMicroseconds(25);
+	delayMicroseconds(BYTE_DELAY);
+  char status = byteBack;
 
 	byte2mcu((word & 0x00ff0000) >> 16, mcu);
-	delayMicroseconds(25);
+	delayMicroseconds(BYTE_DELAY);
 
 	byte2mcu((word & 0x0000ff00) >> 8, mcu);
-	delayMicroseconds(25);
+	delayMicroseconds(BYTE_DELAY);
 
 	byte2mcu(word & 0x000000ff, mcu);
 	digitalWrite(ssPinByMcu[mcu],1);
+
+  return status;
 }
