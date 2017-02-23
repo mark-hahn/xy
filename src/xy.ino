@@ -43,7 +43,11 @@ void setup() {
   // setupWebsocket();
 	initSpi();
 
-	status = word2mcu(resetCmd << 24, 0);
+	word2mcu(0, 0);
+	word2mcu(0, 0);
+	word2mcu(resetCmd << 24, 0);
+	word2mcu(0, 0);
+	status = word2mcu(0, 0);
 }
 
 void loop() {
@@ -52,41 +56,24 @@ void loop() {
 	chkUpdates();
 	// chkDriver();
 
-
-	if(!sentCmd) {
-		status = word2mcu(homeCmd << 24, 0);
-		sentCmd = TRUE;
-	}
-	else
-    status = word2mcu(nopCmd << 24, 0);
-
-	if(status != 0 && status != lastStatus) {
+	status = word2mcu(0, 0);
+	if(status == 0) return;
+	if(status != lastStatus) {
     Serial.print("mcu status: "); Serial.println(status, HEX);
 		lastStatus = status;
 	}
-
-	if(status != 0xff && (status & 0x0f) != 0) {
+	if(status == 0xff) {
+		sentCmd = FALSE;
+		return;
+	}
+	if((status & 0x0f) != 0) {
+		word2mcu(0, 0);
 		word2mcu(clearErrorCmd << 24, 0);
+		word2mcu(0, 0);
 		sentCmd = FALSE;
 	}
-
-  // status = word2mcu(resetCmd << 24, 0);
-	// if(status != 0) {
-	// 	if(status != lastStatus) {
-	//     Serial.print("mcu status: "); Serial.println(status, HEX);
-	// 		lastStatus = status;
-	// 	}
-	// 	if(!noResponse && status == 0xff) {
-	// 		Serial.print("mcu not responding ...");
-	// 		noResponse = TRUE;
-	// 	}
-	// 	if(noResponse && status != 0xff) {
-	// 		Serial.println(" mcu responding");
-	// 		noResponse = FALSE;
-	// 	}
-	// 	if(!noResponse && status != 0xff && (status & 0x0f) != 0) {
-	// 		Serial.print("mcu error: "); Serial.println(status, HEX);
-	// 		word2mcu(clearErrorCmd << 24, 0);
-	// 	}
-	// }
+  if(!sentCmd) {
+		word2mcu(homeCmd << 24, 0);
+		sentCmd = TRUE;
+	}
 }
