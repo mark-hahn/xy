@@ -48,10 +48,10 @@ void setup() {
 	word2mcu(0, 0);
 }
 
-void chkStatus() {
-	status = word2mcu(0, 0);
+void chkStatus(char statusIn) {
+	status = statusIn;
 	if(status != 0 && status != lastStatus) {
-    Serial.print("mcu status: "); Serial.println(status, HEX);
+    Serial.print("status: "); Serial.println(status, HEX);
 	  lastStatus = status;
 	}
 }
@@ -63,24 +63,22 @@ void loop() {
 	// chkDriver();
 
 	if(digitalRead(PWRON) == 0) {
-		sentCmd = FALSE;
-		if(sleepCmdCounter++ == 0) {
-			chkStatus();
-      word2mcu(sleepCmd << 24, 0);
-		}
+		if(sleepCmdCounter++ == 0)
+			chkStatus(word2mcu(sleepCmd << 24, 0));
+	  sentCmd = FALSE;
 		return;
 	}
 
-	chkStatus();
+	chkStatus(word2mcu(0, 0););
 
 	if(status == 0xff) {
+		// mcu is not running
 		// sentCmd = FALSE;
 		return;
 	}
 	if((status & 0x0f) != 0) {
 		word2mcu(0, 0);
 		word2mcu(clearErrorCmd << 24, 0);
-		word2mcu(0, 0);
 		// sentCmd = FALSE;
 	}
   if(!sentCmd) {
