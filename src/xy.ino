@@ -69,7 +69,7 @@ void loop() {
 		return;
 	}
 
-	chkStatus(word2mcu(0, 0););
+	chkStatus(word2mcu(0, 0));
 
 	if(status == 0xff) {
 		// mcu is not running
