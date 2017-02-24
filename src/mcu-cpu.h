@@ -33,6 +33,9 @@ typedef unsigned long     uint32_t;
 typedef long pos_t; // 32 bits signed
 #endif
 
+#define FORWARD   1 // motor dir bit
+#define BACKWARDS 0
+
 // immediate command 32-bit words -- top 2 bits are zero
 // command codes enumerated here are in bottom nibble of first byte
 // set homing speeds have microstep index in byte 2 and speed param in 3-4
@@ -42,16 +45,17 @@ typedef long pos_t; // 32 bits signed
 typedef enum Cmd {
   // zero is not used so blank SPI words are ignored
   nopCmd               =  0, // does nothing except get status
-  resetCmd             =  1, // clear state and hold reset on motors, unlocking them
-  idleCmd              =  2, // abort any commands, clear vec buffers
-  homeCmd              =  3, // goes home using no vectors, and saves homing distance
-  moveCmd              =  4, // enough vectors need to be loaded to start
-  reqHomeDist          =  5, // return home distance, not status, next 2 words
-  clearErrorCmd        =  6, // on error, no activity until this command
-  setHomingSpeed       =  7, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed =  8, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      =  9, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 10  // set direction for each motor
+  sleepCmd             =  1, // clear state & set all motor pins low
+  resetCmd             =  2, // clear state & hold reset pins on motors low
+  idleCmd              =  3, // abort any commands, clear vec buffers
+  homeCmd              =  4, // goes home using no vectors, and saves homing distance
+  moveCmd              =  5, // enough vectors need to be loaded to start
+  reqHomeDist          =  6, // return home distance, not status, next 2 words
+  clearErrorCmd        =  7, // on error, no activity until this command
+  setHomingSpeed       =  8, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed =  9, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 10, // set motorCurrent (0 to 31) immediately
+  setDirectionLevelXY  = 11  // set direction for each motor
 } Cmd;
 
 // absolute vector 32-bit words -- constant speed travel
@@ -86,10 +90,11 @@ typedef struct Vector {
 // values are valid even when error flag is set, tells what was happening
 // 3 bits
 typedef enum Status {
-  statusUnlocked    = 1, // idle with no motor current
-  statusLocked      = 2, // idle with motor current
-  statusHoming      = 3, // automatically homing without vectors
-  statusMoving      = 4  // executing vector moves from vecBuf
+  statusSleeping    = 1, // idle, all motor pins low
+  statusUnlocked    = 2, // idle with motor reset pins low
+  statusLocked      = 3, // idle with motor current
+  statusHoming      = 4, // automatically homing without vectors
+  statusMoving      = 5  // executing vector moves from vecBuf
 } Status;
 
 // 4 bits
