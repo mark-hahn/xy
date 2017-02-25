@@ -127,28 +127,17 @@ typedef enum Error {
 } Error;
 
 
-#ifdef CPU_H
-
 // absolute vector 32-bit words -- constant speed travel
 typedef struct Vector {
-  uint16_t  usecsPerPulse;
+  shortTime_t  usecsPerPulse;
   // ctrlWord has five bit fields, from msb to lsb ...
   //   1 bit: axis X vector, both X and Y clr means command, not vector
   //   1 bit: axis Y vector, both X and Y set means delta, not absolute, vector
   //   1 bit: dir (0: backwards, 1: forwards)
   //   3 bits: ustep idx, 0 (full-step) to 5 (1/32 step)
   //  10 bits: pulse count
-  uint16_t ctrlWord;
+  unsigned int ctrlWord;
 } Vector;
-
-#else  // MCU_H
-
-typedef struct Vector {
-  uint16_t ctrlWord;
-  uint16_t  usecsPerPulse;
-} Vector;
-
-#endif
 
 typedef union VectorU {
   Vector   vec;
