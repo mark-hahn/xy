@@ -3,13 +3,14 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-#define BYTE_DELAY 30   // usecs between  8-bit bytes
-#define WORD_DELAY 60   // usecs between 32-bit words
+#define BYTE_DELAY     20   // usecs between  8-bit bytes
+#define DEF_WORD_DELAY 50   // usecs between 32-bit words
 
 #define SCK 14
 
 int32 speedByMcu[3] = {4000000, 4000000, 4000000};
 char  ssPinByMcu[3] = {15, 16, 0};
+uint16_t wordDelay = DEF_WORD_DELAY;
 
 void initSpi() {
   pinMode(SCK, OUTPUT); // why?
@@ -30,7 +31,12 @@ void byte2mcu(char byte, char mcu) {
   SPI.endTransaction();
 }
 
-char word2mcu(uint32_t word, char mcu, uint16_t delay) {
+void setWordDelay(uint16_t wordDelayIn) {
+  wordDelay = wordDelayIn;
+  if(wordDelay == 0) wordDelay = DEF_WORD_DELAY;
+}
+
+char word2mcu(uint32_t word, char mcu) {
 	digitalWrite(ssPinByMcu[mcu],0);
 
 	byte2mcu(word >> 24, mcu);
@@ -47,6 +53,6 @@ char word2mcu(uint32_t word, char mcu, uint16_t delay) {
 
   digitalWrite(ssPinByMcu[mcu],1);
 
-  delayMicroseconds(delay? delay : WORD_DELAY);
+  delayMicroseconds(wordDelay);
   return status;
 }

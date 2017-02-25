@@ -5,6 +5,7 @@
 extern char byteBack;
 
 void initSpi();
-char word2mcu(uint32_t word, char mcu, uint16_t delay);
+void setWordDelay(uint16_t wordDelayIn);
+char word2mcu(uint32_t word, char mcu);
 
 #endif
