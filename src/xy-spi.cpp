@@ -4,7 +4,7 @@
 #include "mcu-cpu.h"
 
 #define BYTE_DELAY 30   // usecs between  8-bit bytes
-#define WORD_DELAY 200   // usecs between 32-bit words
+#define WORD_DELAY 60   // usecs between 32-bit words
 
 #define SCK 14
 
@@ -30,8 +30,7 @@ void byte2mcu(char byte, char mcu) {
   SPI.endTransaction();
 }
 
-char word2mcu(uint32_t word, char mcu) {
-	delayMicroseconds(WORD_DELAY);
+char word2mcu(uint32_t word, char mcu, uint16_t delay) {
 	digitalWrite(ssPinByMcu[mcu],0);
 
 	byte2mcu(word >> 24, mcu);
@@ -44,8 +43,10 @@ char word2mcu(uint32_t word, char mcu) {
 	byte2mcu((word & 0x0000ff00) >> 8, mcu);
 	delayMicroseconds(BYTE_DELAY);
 
-	byte2mcu(word & 0x000000ff, mcu);
-	digitalWrite(ssPinByMcu[mcu],1);
+  byte2mcu(word & 0x000000ff, mcu);
 
+  digitalWrite(ssPinByMcu[mcu],1);
+
+  delayMicroseconds(delay? delay : WORD_DELAY);
   return status;
 }

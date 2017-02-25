@@ -27,6 +27,8 @@ void setup() {
 	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
 
 	pinMode(PWRLED, OUTPUT);
+	digitalWrite(PWRLED, 0);
+
   pinMode(PWRON, INPUT);
 
 	// SPIFFS.begin();
@@ -37,13 +39,12 @@ void setup() {
   // setupWebsocket();
 	initSpi();
 
-	word2mcu(0, 0);
-	word2mcu(0, 0);
-	word2mcu(sleepCmd << 24, 0);
-	word2mcu(0, 0);
-	word2mcu(0, 0);
+	word2mcu(0, 0, 500);
+	word2mcu(sleepCmd << 24, 0, 500);
+	word2mcu(0, 0, 500);
 }
 
+uint16_t wordDelay = 0;
 char status = 0;
 char errorCode = 0;
 char errorAxis;
@@ -92,6 +93,8 @@ void processRecIn() {
   Serial.println(String("vers: ")      + (int) statusRec.rec.vers);
   Serial.println(String("homeDistX: ") + statusRec.rec.homeDistX);
   Serial.println(String("homeDistY: ") + statusRec.rec.homeDistY);
+
+	wordDelay = 0;
 }
 
 bool_t sentCmd = FALSE;  // debug to send one command at power on
@@ -128,11 +131,17 @@ void chkStatus(char statusIn) {
 	if(status != 0 && status != lastStatus) {
     Serial.print("Status: "); Serial.println(status, HEX);
   }
-	if(errorCode != 0 && errorCode != lastErrorCode) {
+	if(errorCode != lastErrorCode && errorCode)
 		Serial.println(String("Error, code: ") + String(errorCode, DEC) +
 									             ", axis: "  + String(errorAxis, DEC));
-		word2mcu(0, 0);
-		word2mcu(clearErrorCmd << 24, 0);
+	if(errorCode != lastErrorCode && !errorCode)
+		Serial.println("Error cleared");
+
+	if(errorCode) {
+		word2mcu(0, 0, 300);
+		word2mcu(clearErrorCmd << 24, 0, 300);
+		// Serial.println("Sent cmd: clearErrorCmd");
+		word2mcu(0, 0, 300);
 	}
 	lastStatus = status;
 	lastErrorCode = errorCode;
@@ -147,23 +156,19 @@ void loop() {
 	if(digitalRead(PWRON) == 0) {
 		digitalWrite(PWRLED, 0);
 		if(sleepCmdCounter++ == 0)
-			chkStatus(word2mcu(sleepCmd << 24, 0));
+			chkStatus(word2mcu(sleepCmd << 24, 0, wordDelay));
 	  sentCmd = FALSE; // debug, send test command on power switch on
 		return;
 	}
 	else digitalWrite(PWRLED, 1);
 
-	chkStatus(word2mcu(0, 0));
+	chkStatus(word2mcu(0, 0, wordDelay));
 
-	if(status == statusNoResponse) {
-		// mcu is not running
-		// sentCmd = FALSE;
-		return;
-	}
-
-  if(!sentCmd) {
-		word2mcu(statusCmd << 24, 0);
-		// word2mcu(homeCmd << 24, 0);
+  if(status != statusNoResponse && !errorCode && !sentCmd) {
+	  wordDelay = 300;
+		chkStatus(word2mcu(statusCmd << 24, 0, wordDelay));
+		// chkStatus(word2mcu(homeCmd << 24, 0, wordDelay));
+		Serial.println("Sent cmd: statusCmd **********************");
 		sentCmd = TRUE;
 	}
 }

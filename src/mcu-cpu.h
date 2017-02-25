@@ -52,25 +52,24 @@ typedef enum Cmd {
   sleepCmd             =  2, // clear state & set all motor pins low
   resetCmd             =  3, // clear state & hold reset pins on motors low
   idleCmd              =  4, // abort any commands, clear vec buffers
-  homeCmd              =  5, // goes home using no vectors, and saves homing distance
-  moveCmd              =  6, // enough vectors need to be loaded to start
-  reqHomeDist          =  7, // return home distance, not status, next 2 words
-  clearErrorCmd        =  8, // on error, no activity until this command
-  setHomingSpeed       =  9, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed = 10, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      = 11, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 12  // set direction for each motor
+  homeCmd              =  5, // goes home and saves homing distance
+  moveCmd              =  6, // enough vectors need to be loaded to do thia
+  clearErrorCmd        =  7, // on error, no activity until this command
+  setHomingSpeed       =  8, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed =  9, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 10, // set motorCurrent (0 to 31) immediately
+  setDirectionLevelXY  = 11  // set direction for each motor
 } Cmd;
 
 // general mcu states
 // values are valid even when error flag is set, tells what was happening
 // 5 bits
 typedef enum Status {
-  statusNoResponse  = 1, // no response from mcu (receiving 0xff)
+  statusNoResponse  = 1, // no response from mcu (cpu is receiving 0xff)
   statusSleeping    = 2, // idle, all motor pins low
   statusUnlocked    = 3, // idle with motor reset pins low
-  statusLocked      = 4, // idle with motor current
-  statusHoming      = 5, // automatically homing without vectors
+  statusHoming      = 4, // automatically homing without vectors
+  statusLocked      = 5, // idle with motor current
   statusMoving      = 6  // executing vector moves from vecBuf
 } Status;
 
