@@ -14,6 +14,13 @@
 //     http://techref.massmind.org/techref/io/stepper/estimate.htm
 //   assuming 1A, 2.6mH, 12V, and 200 steps per rev; min is 433 usecs full step
 
+// motor notes ... distance per step
+// 0: 0.2 mm
+// 1: 0.1 mm
+// 2: 0.05 mm
+// 3: 0.025 mm
+// 4: 0.0125 mm
+// 5: 0.00625 mm
 
 #define X 0  /* idx for X axis */
 #define Y 1  /* idx for Y axis */
@@ -53,7 +60,7 @@ typedef enum Cmd {
   resetCmd             =  3, // clear state & hold reset pins on motors low
   idleCmd              =  4, // abort any commands, clear vec buffers
   homeCmd              =  5, // goes home and saves homing distance
-  moveCmd              =  6, // enough vectors need to be loaded to do thia
+  moveCmd              =  6, // enough vectors need to be loaded to do this
   clearErrorCmd        =  7, // on error, no activity until this command
   setHomingSpeed       =  8, // set homeUIdx & homeUsecPerPulse settings
   setHomingBackupSpeed =  9, // set homeBkupUIdx & homeBkupUsecPerPulse settings
@@ -68,7 +75,7 @@ typedef enum Status {
   statusNoResponse  = 1, // no response from mcu (cpu is receiving 0xff)
   statusSleeping    = 2, // idle, all motor pins low
   statusUnlocked    = 3, // idle with motor reset pins low
-  statusHoming      = 4, // automatically homing without vectors
+  statusHoming      = 4, // auto homing
   statusLocked      = 5, // idle with motor current
   statusMoving      = 6  // executing vector moves from vecBuf
 } Status;
@@ -113,22 +120,40 @@ typedef enum Error {
   errorMoveWhenUnlocked  = 10,
   errorMoveWithNoVectors = 12,
   errorSpiByteSync       = 14,
-  errorSpiOvflw          = 16,
-  errorSpiWcol           = 18
+  errorSpiByteOverrun    = 16,
+  errorSpiWordOverrun    = 18,
+  errorSpiOvflw          = 20,
+  errorSpiWcol           = 22
 } Error;
 
 
+#ifdef CPU_H
+
 // absolute vector 32-bit words -- constant speed travel
 typedef struct Vector {
-  shortTime_t usecsPerPulse; // LSInt
-  // absolute ctrlWord has five bit fields, from msb to lsb ...
+  uint16_t  usecsPerPulse;
+  // ctrlWord has five bit fields, from msb to lsb ...
   //   1 bit: axis X vector, both X and Y clr means command, not vector
   //   1 bit: axis Y vector, both X and Y set means delta, not absolute, vector
   //   1 bit: dir (0: backwards, 1: forwards)
   //   3 bits: ustep idx, 0 (full-step) to 5 (1/32 step)
   //  10 bits: pulse count
-  unsigned int ctrlWord;
+  uint16_t ctrlWord;
 } Vector;
+
+#else  // MCU_H
+
+typedef struct Vector {
+  uint16_t ctrlWord;
+  uint16_t  usecsPerPulse;
+} Vector;
+
+#endif
+
+typedef union VectorU {
+  Vector   vec;
+  uint32_t word;
+} VectorU;
 
 // delta 32-bit words -- varying speed travel
 // this word appears after an absolute vector with multiple vectors per word

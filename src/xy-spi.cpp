@@ -56,3 +56,13 @@ char word2mcu(uint32_t word, char mcu) {
   delayMicroseconds(wordDelay);
   return status;
 }
+
+void vec2mcu(char mcu, char axis, char dir, char ustep,
+             uint16_t usecsPerPulse, uint16_t pulseCount) {
+  VectorU vec;
+  vec.vec.usecsPerPulse = usecsPerPulse;
+  vec.vec.ctrlWord = (axis ? 0x4000 : 0x8000) |
+                     (dir << 13) | (ustep << 10) | pulseCount;
+  Serial.println(String((uint32_t) vec.word, HEX));
+  word2mcu(vec.word, mcu);
+}

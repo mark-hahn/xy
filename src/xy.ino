@@ -172,8 +172,16 @@ void loop() {
   if(status != statusNoResponse && !errorCode && !sentCmd) {
 	  // setWordDelay(300);
 		// chkStatus(word2mcu(statusCmd << 24, 0));
-		chkStatus(word2mcu(homeCmd << 24, 0));
-		Serial.println("Sent cmd: homeCmd");
+		// chkStatus(word2mcu(homeCmd << 24, 0));
+
+    // vec2mcu(char mcu, char axis, char dir, char ustep,
+		//         uint16_t usecsPerPulse, uint16_t pulseCount)
+    vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
+    vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
+    vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
+    vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
+
+		Serial.println("Sent vectors");
 		sentCmd = TRUE;
 	}
 }
