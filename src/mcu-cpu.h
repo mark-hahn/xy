@@ -27,14 +27,15 @@ typedef unsigned int shortTime_t; // 16 bits unsigned
 // position, unit: 0.00625 mm, 1/32 step distance (smallest microstep)
 // max position is +- 52 meters
 #ifdef MCU_H
-typedef signed short long pos_t; // 24 bits signed
+typedef signed char         int8_t;
 typedef unsigned long     uint32_t;
+typedef signed short long    pos_t; // 24 bits signed
 #else // CPU_H
 typedef long pos_t; // 32 bits signed
 #endif
 
-#define FORWARD   1 // motor dir bit
-#define BACKWARDS 0
+#define FORWARD   0 // motor dir bit
+#define BACKWARDS 1
 
 // immediate command 32-bit words -- top 2 bits are zero
 // command codes enumerated here are in bottom nibble of first byte
@@ -45,18 +46,71 @@ typedef long pos_t; // 32 bits signed
 typedef enum Cmd {
   // zero is not used so blank SPI words are ignored
   nopCmd               =  0, // does nothing except get status
-  sleepCmd             =  1, // clear state & set all motor pins low
-  resetCmd             =  2, // clear state & hold reset pins on motors low
-  idleCmd              =  3, // abort any commands, clear vec buffers
-  homeCmd              =  4, // goes home using no vectors, and saves homing distance
-  moveCmd              =  5, // enough vectors need to be loaded to start
-  reqHomeDist          =  6, // return home distance, not status, next 2 words
-  clearErrorCmd        =  7, // on error, no activity until this command
-  setHomingSpeed       =  8, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed =  9, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      = 10, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 11  // set direction for each motor
+  statusCmd            =  1, // requests entire state rec returned
+  sleepCmd             =  2, // clear state & set all motor pins low
+  resetCmd             =  3, // clear state & hold reset pins on motors low
+  idleCmd              =  4, // abort any commands, clear vec buffers
+  homeCmd              =  5, // goes home using no vectors, and saves homing distance
+  moveCmd              =  6, // enough vectors need to be loaded to start
+  reqHomeDist          =  7, // return home distance, not status, next 2 words
+  clearErrorCmd        =  8, // on error, no activity until this command
+  setHomingSpeed       =  9, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed = 10, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 11, // set motorCurrent (0 to 31) immediately
+  setDirectionLevelXY  = 12  // set direction for each motor
 } Cmd;
+
+// general mcu states
+// values are valid even when error flag is set, tells what was happening
+// 3 bits
+typedef enum Status {
+  statusSleeping    = 1, // idle, all motor pins low
+  statusUnlocked    = 2, // idle with motor reset pins low
+  statusLocked      = 3, // idle with motor current
+  statusHoming      = 4, // automatically homing without vectors
+  statusMoving      = 5  // executing vector moves from vecBuf
+} Status;
+
+// top 2 bits of every return byte to cpu
+// only first byte of 32-bit word is used
+#define typeState  0x10  // state
+#define typeData   0x20  // status rec data in bottom 6 bits
+#define typeError  0x30  // err code: d3-d0, mcu flag: d4
+
+// this record is returned to the CPU when requested by statusCmd
+// must be sequential with status or error before and after
+// future api versions may extend record
+typedef struct StatusRec {
+  char apiVers;        // version of this API
+  char mfr;            // manufacturer code (1 == eridien)
+  char prod;           // product id (1 = XY base)
+  char vers;           // product version
+  uint32_t homeDistX;  // homing distance of last home operation
+  uint32_t homeDistY;
+} StatusRec;
+
+typedef union StatusRecU {
+  StatusRec rec;
+  char      bytes[sizeof(StatusRec)];
+} StatusRecU;
+
+#define STATUS_SPI_BYTE_COUNT           \
+  (((sizeof(StatusRec) % 3) == 0 ?      \
+   ((sizeof(StatusRec)*4)/3) : (((sizeof(StatusRec)*4)/3) + 1)))
+
+// 4 bits, bottom bit reserved for error axis
+typedef enum Error {
+  errorFault             =  2, // driver chip fault
+  errorLimit             =  4, // hit error limit switch during move
+  errorVecBufOverflow    =  6,
+  errorVecBufUnderflow   =  8,
+  errorMoveWhenUnlocked  = 10,
+  errorMoveWithNoVectors = 12,
+  errorSpiByteSync       = 14,
+  errorSpiOvlw           = 16,
+  errorSpiWcol           = 18
+} Error;
+
 
 // absolute vector 32-bit words -- constant speed travel
 typedef struct Vector {
@@ -67,7 +121,6 @@ typedef struct Vector {
   //   1 bit: dir (0: backwards, 1: forwards)
   //   3 bits: ustep idx, 0 (full-step) to 5 (1/32 step)
   //  10 bits: pulse count
-  // 84101000 X fwd uidx=1 16 pulses, 4.1 ms
   unsigned int ctrlWord;
 } Vector;
 
@@ -85,57 +138,5 @@ typedef struct Vector {
 // the last vector of axis move: 1111 1111 1111 1111 1111 1111 1111 111A
 // where A is the axis
 // when both axis have reached this marker then the move is finished
-
-// general mcu states
-// values are valid even when error flag is set, tells what was happening
-// 3 bits
-typedef enum Status {
-  statusSleeping    = 1, // idle, all motor pins low
-  statusUnlocked    = 2, // idle with motor reset pins low
-  statusLocked      = 3, // idle with motor current
-  statusHoming      = 4, // automatically homing without vectors
-  statusMoving      = 5  // executing vector moves from vecBuf
-} Status;
-
-// 4 bits
-typedef enum Error {
-  none                   = 0,
-  errorFault             = 1, // driver chip fault
-  errorLimit             = 2, // hit error limit switch during move
-  errorVecBufOverflow    = 3,
-  errorVecBufUnderflow   = 4,
-  errorMoveWhenUnlocked  = 5,
-  errorMoveWithNoVectors = 6,
-  errorSpiByteSync       = 7
-} Error;
-
-
-// return status -- out of date
-
-// returnWordType_t is in the top nibble of the first byte
-//enum returnWordType_t {
-//  retypeNone      = 0x00, // whole word of zeros may happen, ignore them
-//  retypeStatus    = 0x10,
-//  retypeHomeDistX = 0x20, // this type of return has param in bottom 3 bytes
-//  retypeHomeDistY = 0x30
-//} returnWordType_t;
-
-// retFlags is in the bottom nibble of the first byte
-// all of these flags are returned on every word to CPU
-//enum retFlags {
-//  retflagBufXHighWater = 0x08,
-//  retflagBufYHighWater = 0x04,
-//  retflagErrorAxis     = 0x02, // default zero if no axis specified
-//  retFlagError         = 0x01  // when error everything halts until cmd clrs it
-//};
-
-// this is the status word returned when returnWordType is retypeStatus
-// this is always returned except after reqHomeDist cmd
-//typedef struct ReturnStatus {
-//  char flags;
-//  char status;
-//  char errorCode;
-//  char reserved;
-//} ReturnStatus;
 
 #endif
