@@ -2,10 +2,12 @@
 #ifndef CPU_H
 #define	CPU_H
 
+#define API_VERSION 1
+
 // This file contains all definitions shared by CPU and MCU
 // and should be included in CPU and MCU apps
 // If this file must change, make sure it is backwards compatible
-// Keep the files in the CPU and MCU apps the same
+// Keep this file in both apps the same (except for MCU_H and CPU_H defines)
 
 // notes for CPU ...
 //   for max stepper speed calculator see ...
@@ -34,8 +36,8 @@ typedef signed short long    pos_t; // 24 bits signed
 typedef long pos_t; // 32 bits signed
 #endif
 
-#define FORWARD   0 // motor dir bit
-#define BACKWARDS 1
+#define FORWARD   1 // motor dir bit
+#define BACKWARDS 0
 
 // immediate command 32-bit words -- top 2 bits are zero
 // command codes enumerated here are in bottom nibble of first byte
@@ -62,29 +64,34 @@ typedef enum Cmd {
 
 // general mcu states
 // values are valid even when error flag is set, tells what was happening
-// 3 bits
+// 5 bits
 typedef enum Status {
-  statusSleeping    = 1, // idle, all motor pins low
-  statusUnlocked    = 2, // idle with motor reset pins low
-  statusLocked      = 3, // idle with motor current
-  statusHoming      = 4, // automatically homing without vectors
-  statusMoving      = 5  // executing vector moves from vecBuf
+  statusNoResponse  = 1, // no response from mcu (receiving 0xff)
+  statusSleeping    = 2, // idle, all motor pins low
+  statusUnlocked    = 3, // idle with motor reset pins low
+  statusLocked      = 4, // idle with motor current
+  statusHoming      = 5, // automatically homing without vectors
+  statusMoving      = 6  // executing vector moves from vecBuf
 } Status;
 
-// top 2 bits of every return byte to cpu
-// only first byte of 32-bit word is used
-#define typeState  0x10  // state
-#define typeData   0x20  // status rec data in bottom 6 bits
-#define typeError  0x30  // err code: d3-d0, mcu flag: d4
+// only first return byte of 32-bit word is used
+// byte type in top 2 bits of returned byte
+#define typeState  0x40  // state, if errorcode then d5 = 1
+#define typeData   0x80  // status rec data in bottom 6 bits
+#define typeError  0xc0  // err code: d5-d1, mcu flag: d0
+
+// state byte also includes flag indicating error
+#define spiStateByteErrFlag 0x20
+#define spiStateByteMask    0x1f
 
 // this record is returned to the CPU when requested by statusCmd
-// must be sequential with status or error before and after
+// must be sequential with status byte before and after
 // future api versions may extend record
 typedef struct StatusRec {
   char apiVers;        // version of this API
   char mfr;            // manufacturer code (1 == eridien)
   char prod;           // product id (1 = XY base)
-  char vers;           // product version
+  char vers;           // XY (code or hw) version
   uint32_t homeDistX;  // homing distance of last home operation
   uint32_t homeDistY;
 } StatusRec;
@@ -98,7 +105,7 @@ typedef union StatusRecU {
   (((sizeof(StatusRec) % 3) == 0 ?      \
    ((sizeof(StatusRec)*4)/3) : (((sizeof(StatusRec)*4)/3) + 1)))
 
-// 4 bits, bottom bit reserved for error axis
+// 5 bit code, lsb of error byte reserved for error axis
 typedef enum Error {
   errorFault             =  2, // driver chip fault
   errorLimit             =  4, // hit error limit switch during move
@@ -107,7 +114,7 @@ typedef enum Error {
   errorMoveWhenUnlocked  = 10,
   errorMoveWithNoVectors = 12,
   errorSpiByteSync       = 14,
-  errorSpiOvlw           = 16,
+  errorSpiOvflw          = 16,
   errorSpiWcol           = 18
 } Error;
 

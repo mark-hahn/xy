@@ -29,8 +29,8 @@ void resetEeprom() {
   eepromPutStr("eridienxy", 35);
 
 	//debug
-  // eepromPutStr("hahn-fi", 68);
-  // eepromPutStr("NBVcvbasd987", 101);
+  eepromPutStr("hahn-fi", 68);
+  eepromPutStr("NBVcvbasd987", 101);
 }
 
 void initeeprom() {

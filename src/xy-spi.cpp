@@ -3,8 +3,8 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-#define BYTE_DELAY 20   // usecs between  8-bit bytes
-#define WORD_DELAY 50   // usecs between 32-bit words
+#define BYTE_DELAY 30   // usecs between  8-bit bytes
+#define WORD_DELAY 200   // usecs between 32-bit words
 
 #define SCK 14
 
