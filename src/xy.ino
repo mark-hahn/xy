@@ -40,9 +40,9 @@ void setup() {
 	initSpi();
 
   setWordDelay(300);
-	word2mcu(0, 0);
-	word2mcu(sleepCmd << 24, 0);
-	word2mcu(0, 0);
+	zero2mcu(0);
+	cmd2mcu(0, sleepCmd);
+	zero2mcu(0);
 	setWordDelay(0);
 }
 
@@ -95,10 +95,9 @@ void processRecIn() {
 	setWordDelay(0);
 }
 
-bool_t sentCmd = FALSE;  // debug to send one command at power on
+bool_t sentCmd = TRUE;  // debug to send one command when powered on
 
 void chkStatus(char statusIn) {
-	// Serial.println(statusIn, HEX);
 	if(statusIn == 0xff) {
 		status = statusNoResponse;
 		if(bytesSinceStateByte != 0xff) bytesSinceStateByte++;
@@ -129,17 +128,18 @@ void chkStatus(char statusIn) {
 	if(status != 0 && status != lastStatus) {
     Serial.print("Status: "); Serial.println(status, HEX);
   }
-	if(errorCode != lastErrorCode && errorCode)
-		Serial.println(String("Error, code: ") + String(errorCode, DEC) +
-									             ", axis: "  + String(errorAxis, DEC));
-	if(errorCode != lastErrorCode && !errorCode)
-		Serial.println("Error cleared");
-
+	if(errorCode != lastErrorCode) {
+		if( errorCode)
+			Serial.println(String("Error, code: ") + String(errorCode, DEC) +
+										             ", axis: "  + String(errorAxis, DEC));
+		else
+		  Serial.println("Error clear");
+  }
 	if(errorCode) {
   	setWordDelay(300);
-		word2mcu(0, 0);
-		word2mcu(clearErrorCmd << 24, 0);
-		word2mcu(0, 0);
+	  zero2mcu(0);
+		cmd2mcu(0, clearErrorCmd);
+	  zero2mcu(0);
   	setWordDelay(0);
 	}
 	lastStatus = status;
@@ -155,33 +155,36 @@ void loop() {
 	if(digitalRead(PWRON) == 0) {
 		digitalWrite(PWRLED, 0);
 		if(sleepCmdCounter++ == 0)
-			chkStatus(word2mcu(sleepCmd << 24, 0));
+			chkStatus(cmd2mcu(0, sleepCmd));
 	  sentCmd = FALSE; // debug, send test command on power switch on
 		return;
 	}
 	else {
     if(status == statusSleeping) {
-		  chkStatus(word2mcu(resetCmd << 24, 0));
-			chkStatus(word2mcu(0, 0));
+		  chkStatus(cmd2mcu(0, resetCmd));
+			chkStatus(zero2mcu(0));
 			Serial.println("Sent cmd: resetCmd");
 		}
 		digitalWrite(PWRLED, 1);
 	}
-	chkStatus(word2mcu(0, 0));
+	chkStatus(zero2mcu(0));
 
   if(status != statusNoResponse && !errorCode && !sentCmd) {
-	  // setWordDelay(300);
-		// chkStatus(word2mcu(statusCmd << 24, 0));
-		// chkStatus(word2mcu(homeCmd << 24, 0));
+		// chkStatus(cmd2mcu(0, homeCmd));
+		// chkStatus(cmd2mcu(0, moveCmd));
 
-    // vec2mcu(char mcu, char axis, char dir, char ustep,
-		//         uint16_t usecsPerPulse, uint16_t pulseCount)
+// void vec2mcu(char mcu, char axis, char dir, char ustep,
+//              uint16_t usecsPerPulse, uint16_t pulseCount) {
     vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
     vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
-    vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
-    vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
+		eof2mcu(0, X);
+
+    vec2mcu(0, Y, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
+    vec2mcu(0, Y, FORWARD, 2, 1000, 100*20-1023);
+		eof2mcu(0, Y);
 
 		Serial.println("Sent vectors");
+
 		sentCmd = TRUE;
 	}
 }

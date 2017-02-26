@@ -23,46 +23,127 @@ void initSpi() {
 	SPI.setHwCs(false);  // our code will drive SS, not library
 }
 
-char byteBack;
-
-void byte2mcu(char byte, char mcu) {
-  SPI.beginTransaction(SPISettings(speedByMcu[mcu], MSBFIRST, SPI_MODE0));
-  byteBack = SPI.transfer(byte);
-  SPI.endTransaction();
-}
-
 void setWordDelay(uint16_t wordDelayIn) {
   wordDelay = wordDelayIn;
   if(wordDelay == 0) wordDelay = DEF_WORD_DELAY;
 }
 
-char word2mcu(uint32_t word, char mcu) {
+char byte2mcu(char mcu, char byte) {
+  SPI.beginTransaction(SPISettings(speedByMcu[mcu], MSBFIRST, SPI_MODE0));
+  char byteBack = SPI.transfer(byte);
+  SPI.endTransaction();
+  return byteBack;
+}
+
+// array is little-endian (unusual)
+// spi is big-endian
+char bytes2mcu(char mcu, char *bytes) {
 	digitalWrite(ssPinByMcu[mcu],0);
-
-	byte2mcu(word >> 24, mcu);
-	delayMicroseconds(BYTE_DELAY);
-  char status = byteBack;
-
-	byte2mcu((word & 0x00ff0000) >> 16, mcu);
+  char status = byte2mcu(bytes[3], mcu);
 	delayMicroseconds(BYTE_DELAY);
 
-	byte2mcu((word & 0x0000ff00) >> 8, mcu);
+	byte2mcu(bytes[2], mcu);
+  delayMicroseconds(BYTE_DELAY);
+
+	byte2mcu(bytes[1], mcu);
 	delayMicroseconds(BYTE_DELAY);
 
-  byte2mcu(word & 0x000000ff, mcu);
-
+	byte2mcu(bytes[0], mcu);
   digitalWrite(ssPinByMcu[mcu],1);
-
   delayMicroseconds(wordDelay);
   return status;
 }
 
-void vec2mcu(char mcu, char axis, char dir, char ustep,
-             uint16_t usecsPerPulse, uint16_t pulseCount) {
-  VectorU vec;
-  vec.vec.usecsPerPulse = usecsPerPulse;
-  vec.vec.ctrlWord = (axis ? 0x4000 : 0x8000) |
-                     (dir << 13) | (ustep << 10) | pulseCount;
-  Serial.println(String((uint32_t) vec.word, HEX));
-  word2mcu(vec.word, mcu);
+/// endian flip is needed in each int
+char ints2mcu(char mcu, uint16_t int1, uint16_t int2) {
+	digitalWrite(ssPinByMcu[mcu],0);
+  char status = byte2mcu(mcu, ((char *) &int1)[1]);
+	delayMicroseconds(BYTE_DELAY);
+
+	byte2mcu(mcu, ((char *) &int1)[0]);
+  delayMicroseconds(BYTE_DELAY);
+
+  byte2mcu(mcu, ((char *) &int2)[1]);
+	delayMicroseconds(BYTE_DELAY);
+
+	byte2mcu(mcu, ((char *) &int2)[0]);
+  delayMicroseconds(BYTE_DELAY);
+
+  digitalWrite(ssPinByMcu[mcu],1);
+  delayMicroseconds(wordDelay);
+  return status;
 }
+
+// word and array are both little-endian
+char word2mcu(char mcu, uint32_t word) {
+  return bytes2mcu(mcu, (char *) &word);
+}
+
+// send all zero word, spi idle
+// used to get status or just delay
+char zero2mcu(char mcu) {
+  return word2mcu(mcu, 0);
+}
+
+// send one byte immediate command, not per-axis
+char cmd2mcu(char mcu, char cmd) {
+	digitalWrite(ssPinByMcu[mcu],0);
+  char status = byte2mcu(mcu, cmd);
+	delayMicroseconds(BYTE_DELAY);
+
+	byte2mcu(mcu, 0);
+  delayMicroseconds(BYTE_DELAY);
+
+  byte2mcu(mcu, 0);
+	delayMicroseconds(BYTE_DELAY);
+
+  byte2mcu(mcu, 0);
+  delayMicroseconds(BYTE_DELAY);
+
+  digitalWrite(ssPinByMcu[mcu],1);
+  delayMicroseconds(wordDelay);
+  return status;
+}
+
+// absolute vector for straight line
+// max 65.536 ms per pulse (65536 usec) and max 1023 pulses
+// add another vec2mcu for more pulses
+// add delay2mcu for longer usecs/single-pulse
+char vec2mcu(char mcu, char axis, char dir, char ustep,
+             uint16_t usecsPerPulse, uint16_t pulseCount) {
+  Serial.print(  String( (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount, HEX) );
+  Serial.println(String(usecsPerPulse, HEX));
+  return ints2mcu(mcu,
+                 (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount,
+                 usecsPerPulse);
+}
+
+// outputs no pulse, just delay
+// max 65.536 ms (65536 usec)
+char delay2mcu(char mcu, char axis, uint16_t delayUsecs) {
+  return vec2mcu(mcu, axis, 0, 0, delayUsecs, 0);
+}
+
+// last vector in move, change mcu state from moving to locked
+char eof2mcu(char mcu, char axis) {
+  return vec2mcu(mcu, axis, 0, 0, 1, 0);
+}
+
+  // char bytes[4];
+  // memcpy(&bytes[0], &int1, 2);
+  // memcpy(&bytes[2], &int2, 2);
+  // return bytes2mcu(mcu, bytes);
+
+	// digitalWrite(ssPinByMcu[mcu],0);
+  // char status = byte2mcu((int1 & 0xff00) >> 8, mcu);
+	// delayMicroseconds(BYTE_DELAY);
+  //
+	// byte2mcu((int1 & 0x00ff), mcu);
+  // delayMicroseconds(BYTE_DELAY);
+  //
+  // byte2mcu((int2 & 0xff00) >> 8, mcu);
+	// delayMicroseconds(BYTE_DELAY);
+  //
+	// byte2mcu((int2 & 0x00ff), mcu);
+  // digitalWrite(ssPinByMcu[mcu],1);
+  // delayMicroseconds(wordDelay);
