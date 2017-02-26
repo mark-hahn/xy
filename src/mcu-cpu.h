@@ -37,6 +37,7 @@ typedef unsigned int shortTime_t; // 16 bits unsigned
 // max position is +- 52 meters
 #ifdef MCU_H
 typedef signed char         int8_t;
+typedef unsigned int      uint16_t;
 typedef unsigned long     uint32_t;
 typedef signed short long    pos_t; // 24 bits signed
 #else // CPU_H
@@ -129,14 +130,14 @@ typedef enum Error {
 
 // absolute vector 32-bit words -- constant speed travel
 typedef struct Vector {
-  shortTime_t  usecsPerPulse;
   // ctrlWord has five bit fields, from msb to lsb ...
   //   1 bit: axis X vector, both X and Y clr means command, not vector
   //   1 bit: axis Y vector, both X and Y set means delta, not absolute, vector
   //   1 bit: dir (0: backwards, 1: forwards)
   //   3 bits: ustep idx, 0 (full-step) to 5 (1/32 step)
   //  10 bits: pulse count
-  unsigned int ctrlWord;
+  unsigned int ctrlWord; // top byte is top byte in word version of
+  shortTime_t  usecsPerPulse;
 } Vector;
 
 typedef union VectorU {
