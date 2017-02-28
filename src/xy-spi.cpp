@@ -3,8 +3,8 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-#define BYTE_DELAY     20   // usecs between  8-bit bytes
-#define DEF_WORD_DELAY 50   // usecs between 32-bit words
+#define BYTE_DELAY     10   // usecs between  8-bit bytes
+#define DEF_WORD_DELAY 80   // usecs between 32-bit words
 
 #define SCK 14
 
@@ -111,8 +111,8 @@ char cmd2mcu(char mcu, char cmd) {
 // add delay2mcu for longer usecs/single-pulse
 char vec2mcu(char mcu, char axis, char dir, char ustep,
              uint16_t usecsPerPulse, uint16_t pulseCount) {
-  Serial.print(  String( (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount, HEX) );
-  Serial.println(String(usecsPerPulse, HEX));
+  // Serial.print(  String( (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount, HEX) );
+  // Serial.println(String(usecsPerPulse, HEX));
   return ints2mcu(mcu,
                  (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount,
                  usecsPerPulse);
@@ -128,22 +128,3 @@ char delay2mcu(char mcu, char axis, uint16_t delayUsecs) {
 char eof2mcu(char mcu, char axis) {
   return vec2mcu(mcu, axis, 0, 0, 1, 0);
 }
-
-  // char bytes[4];
-  // memcpy(&bytes[0], &int1, 2);
-  // memcpy(&bytes[2], &int2, 2);
-  // return bytes2mcu(mcu, bytes);
-
-	// digitalWrite(ssPinByMcu[mcu],0);
-  // char status = byte2mcu((int1 & 0xff00) >> 8, mcu);
-	// delayMicroseconds(BYTE_DELAY);
-  //
-	// byte2mcu((int1 & 0x00ff), mcu);
-  // delayMicroseconds(BYTE_DELAY);
-  //
-  // byte2mcu((int2 & 0xff00) >> 8, mcu);
-	// delayMicroseconds(BYTE_DELAY);
-  //
-	// byte2mcu((int2 & 0x00ff), mcu);
-  // digitalWrite(ssPinByMcu[mcu],1);
-  // delayMicroseconds(wordDelay);

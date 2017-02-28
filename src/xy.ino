@@ -95,7 +95,9 @@ void processRecIn() {
 	setWordDelay(0);
 }
 
-bool_t sentCmd = TRUE;  // debug to send one command when powered on
+bool_t sentHome = TRUE;
+bool_t sentMove = TRUE;
+char errorCount = 0;
 
 void chkStatus(char statusIn) {
 	if(statusIn == 0xff) {
@@ -136,13 +138,16 @@ void chkStatus(char statusIn) {
 		  Serial.println("Error clear");
   }
 	if(errorCode) {
-  	setWordDelay(300);
-	  zero2mcu(0);
-		cmd2mcu(0, clearErrorCmd);
-	  zero2mcu(0);
-  	setWordDelay(0);
+		if(errorCount == 0) {
+			errorCount = 1;
+	  	setWordDelay(300);
+		  zero2mcu(0);
+			cmd2mcu(0, clearErrorCmd);
+		  zero2mcu(0);
+	  	setWordDelay(0);
+		}
 	}
-	lastStatus = status;
+	if(status) lastStatus = status;
 	lastErrorCode = errorCode;
 }
 
@@ -153,38 +158,48 @@ void loop() {
 	// chkDriver();
 
 	if(digitalRead(PWRON) == 0) {
+		// power switch off
 		digitalWrite(PWRLED, 0);
-		if(sleepCmdCounter++ == 0)
-			chkStatus(cmd2mcu(0, sleepCmd));
-	  sentCmd = FALSE; // debug, send test command on power switch on
-		return;
+		if(sleepCmdCounter++ == 0) chkStatus(cmd2mcu(0, sleepCmd));
+	  sentHome  = FALSE; // debug, send test commands on power switch on
+		sentMove = FALSE;
 	}
 	else {
+		// power switch on
+		digitalWrite(PWRLED, 1);
     if(status == statusSleeping) {
+			// power switch just switched on
 		  chkStatus(cmd2mcu(0, resetCmd));
 			chkStatus(zero2mcu(0));
 			Serial.println("Sent cmd: resetCmd");
 		}
-		digitalWrite(PWRLED, 1);
-	}
-	chkStatus(zero2mcu(0));
 
-  if(status != statusNoResponse && !errorCode && !sentCmd) {
-		// chkStatus(cmd2mcu(0, homeCmd));
-		// chkStatus(cmd2mcu(0, moveCmd));
+		chkStatus(zero2mcu(0));
 
-// void vec2mcu(char mcu, char axis, char dir, char ustep,
-//              uint16_t usecsPerPulse, uint16_t pulseCount) {
-    vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
-    vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
-		eof2mcu(0, X);
+	  if(status != statusNoResponse && !errorCode && !sentHome) {
+			// void vec2mcu(char mcu, char axis, char dir, char ustep,
+			//              uint16_t usecsPerPulse, uint16_t pulseCount) {
+	    vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
+	    vec2mcu(0, X, FORWARD, 2, 1000, 100*20-1023);
+			eof2mcu(0, X);
 
-    vec2mcu(0, Y, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
-    vec2mcu(0, Y, FORWARD, 2, 1000, 100*20-1023);
-		eof2mcu(0, Y);
+	    vec2mcu(0, Y, FORWARD, 2, 1000, 1023);  // 100 mm but only 1023 each vec
+	    vec2mcu(0, Y, FORWARD, 2, 1000, 100*20-1023);
+			eof2mcu(0, Y);
+			Serial.println("Sent vectors");
 
-		Serial.println("Sent vectors");
-
-		sentCmd = TRUE;
+			delay(500);
+			cmd2mcu(0, homeCmd);
+			Serial.println("Sent home cmd");
+			sentHome = TRUE;
+			sentMove = FALSE;
+	  }
+		else if(status == statusLocked && !errorCode && !sentMove) {
+			delay(500);
+			cmd2mcu(0, moveCmd);
+			Serial.println("Sent move cmd");
+			sentMove = TRUE;
+			sentHome = FALSE;
+		}
 	}
 }
