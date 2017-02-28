@@ -92,18 +92,6 @@ typedef enum Cmd {
   setDirectionLevelXY  = 11  // set direction for each motor
 } Cmd;
 
-// general mcu states
-// values are valid even when error is set, tells what was happening
-// 3 bits
-typedef enum Status {
-  statusNoResponse  = 1, // no response from mcu (cpu is receiving 0xff)
-  statusSleeping    = 2, // idle, all motor pins low
-  statusUnlocked    = 3, // idle with motor reset pins low
-  statusHoming      = 4, // auto homing
-  statusLocked      = 5, // idle with motor current
-  statusMoving      = 6  // executing vector moves from vecBuf
-} Status;
-
 
 /////////////////////////////////  Vectors  ///////////////////////////
 
@@ -140,6 +128,19 @@ typedef union VectorU {
 
 // only first returned (mcu to cpu) byte of 32-bit word is used
 // rest are zero      (mcu has no buffering in that direction)
+
+// mcu states
+// values are valid even when error is set, tells what was happening
+// 3 bits
+typedef enum Status {
+  statusNoResponse  = 1, // no response from mcu (cpu is receiving 0xff)
+  statusSleeping    = 2, // idle, all motor pins low
+  statusUnlocked    = 3, // idle with motor reset pins low
+  statusHoming      = 4, // auto homing
+  statusLocked      = 5, // idle with motor current
+  statusMoving      = 6, // executing vector moves from vecBuf
+  statusMoved       = 7  // same as statusLocked but after move finishes
+} Status;
 
 // state byte...
 // d7-d6: typeState, 0b00

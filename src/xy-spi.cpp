@@ -4,7 +4,7 @@
 #include "mcu-cpu.h"
 
 #define BYTE_DELAY     10   // usecs between  8-bit bytes
-#define DEF_WORD_DELAY 80   // usecs between 32-bit words
+#define DEF_WORD_DELAY 100   // usecs between 32-bit words (too short causes err 18)
 
 #define SCK 14
 
