@@ -13,10 +13,8 @@ void responseOK(AsyncWebServerRequest *request);
 void do_ssids(AsyncWebServerRequest *request);
 void do_eepromssids(AsyncWebServerRequest *request);
 void eepromssidPost();
-void ajaxToMcu(AsyncWebServerRequest *request);
 void ajaxFlashHexLine(const char *line);
 void ajaxResetMcu();
 void chkAjax();
-
 
 #endif

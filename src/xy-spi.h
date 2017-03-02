@@ -21,4 +21,7 @@ char eof2mcu(char mcu, char axis);
 char getMcuState(char mcu);
 char getMcuStatusRec(char mcu);
 
+void flashMcuBytes(unsigned int addr, char *buf, int len);
+void endFlashMcuBytes();
+
 #endif

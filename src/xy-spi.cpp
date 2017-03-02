@@ -228,3 +228,63 @@ char getMcuStatusRec(char mcu) {
 
   return getMcuState(mcu); // too long error
 }
+
+// === these definitions much match the ones in pic-spi-ldr/spi.h ===
+// these packets have all bytes in one SS low period
+// bottom nibble zero in case CPU sends while not flashing
+#define ERASE_CMD  0x10  // cmd byte + 2-byte word address
+#define WRITE_CMD  0x20  // cmd byte + 2-byte word address and 32 words(64 bytes)
+#define RESET_CMD  0x30  // cmd byte only, reset processor, issue when finished
+
+void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
+  if(len != 64 || (addr % 32) != 0) {
+    Serial.println(String("invalid flashMcuBytes params: ") + addr + ", " + len);
+    return;
+  }
+  while(getMcuState(mcu) != statusFlashing) {
+    // start boot loader in mcu
+  	digitalWrite(ssPinByMcu[mcu],0);
+    char status = byte2mcu(mcu, updateFlashCode);
+    digitalWrite(ssPinByMcu[mcu],1);
+    // give some time for flash write and reset
+    delay(100);
+    getMcuState(mcu); // ignore first response
+  }
+
+  // erase block
+  digitalWrite(ssPinByMcu[mcu],0);
+  byte2mcu(mcu, ERASE_CMD);
+  delayMicroseconds(byteDelayByMcu[mcu]);
+  byte2mcu(mcu, addr >> 8);
+  delayMicroseconds(byteDelayByMcu[mcu]);
+  byte2mcu(mcu, addr & 0xff);
+  delayMicroseconds(byteDelayByMcu[mcu]);
+  digitalWrite(ssPinByMcu[mcu],1);
+  // wait for erase to finish
+  while(getMcuState(mcu) != statusFlashing);
+
+  // write block
+  digitalWrite(ssPinByMcu[mcu],0);
+  byte2mcu(mcu, ERASE_CMD);
+  delayMicroseconds(byteDelayByMcu[mcu]);
+  byte2mcu(mcu, addr >> 8);
+  delayMicroseconds(byteDelayByMcu[mcu]);
+  byte2mcu(mcu, addr & 0xff);
+  for(char i=0; i < len; i++) {
+    delayMicroseconds(byteDelayByMcu[mcu]);
+    byte2mcu(mcu, buf[i]);
+  }
+  digitalWrite(ssPinByMcu[mcu],1);
+  // wait for flash write to finish
+  while(getMcuState(mcu) != statusFlashing);
+}
+
+void endFlashMcuBytes() {
+  // make sure mcu is ready and flashing
+  while(getMcuState(mcu) != statusFlashing);
+  // reset mcu
+  digitalWrite(ssPinByMcu[mcu],0);
+  byte2mcu(mcu, RESET_CMD);
+  digitalWrite(ssPinByMcu[mcu],1);
+  // doesn't wait for response since mcu is rebooting
+}

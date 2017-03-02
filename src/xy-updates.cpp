@@ -37,36 +37,36 @@ void do_firmware_update(AsyncWebServerRequest *request) {
   }
 }
 
-// void do_mcu_update(AsyncWebServerRequest *request) {
-//   mcuUpdateReq = (AsyncWebServerRequest *) 0;
-//   const char *host = "hahnca.com";
-// 	request->send(200, "text/plain", "Started mcu update");
-//   Serial.println(String("Started mcu update from ") + host);
-//   WiFiClient client;
-//   if (!client.connect(host, 80)) {
-//     Serial.println("connection failed");
-//     return;
-//   }
-//   String url = "/xymcu/xy-mcu-a.X.production.hex";
-//   client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-//                  "Host: " + host + "\r\n" +
-//                  "Connection: close\r\n\r\n");
-//   unsigned long timeout = millis();
-//   while (client.available() == 0) {
-//     if (millis() - timeout > 5000) {
-//       Serial.println(">>> Client Timeout !");
-//       client.stop();
-//       return;
-//     }
-//   }
-//   bool pastHeaders = false;
-//   while(client.available()){
-//     String line = client.readStringUntil('\n');
-//     if(line == "\r") pastHeaders |= true;
-//     if(pastHeaders) ajaxFlashHexLine(line.c_str());
-//   }
-// }
-//
+void do_mcu_update(AsyncWebServerRequest *request) {
+  mcuUpdateReq = (AsyncWebServerRequest *) 0;
+  const char *host = "hahnca.com";
+	request->send(200, "text/plain", "Started mcu update");
+  Serial.println(String("Started mcu update from ") + host);
+  WiFiClient client;
+  if (!client.connect(host, 80)) {
+    Serial.println("connection failed");
+    return;
+  }
+  String url = "/xymcu/xy-mcu-a.X.production.hex";
+  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
+                 "Host: " + host + "\r\n" +
+                 "Connection: close\r\n\r\n");
+  unsigned long timeout = millis();
+  while (client.available() == 0) {
+    if (millis() - timeout > 5000) {
+      Serial.println(">>> Client Timeout !");
+      client.stop();
+      return;
+    }
+  }
+  bool pastHeaders = false;
+  while(client.available()){
+    String line = client.readStringUntil('\n');
+    if(line == "\r") pastHeaders |= true;
+    if(pastHeaders) ajaxFlashHexLine(line.c_str());
+  }
+}
+
 void do_spiffs_update(AsyncWebServerRequest *request) {
   fsUpdateReq = (AsyncWebServerRequest *) 0;
 	request->send(200, "text/plain", "Started file system update");
@@ -91,5 +91,5 @@ void do_spiffs_update(AsyncWebServerRequest *request) {
 void chkUpdates() {
   if(firmUpdateReq) do_firmware_update(firmUpdateReq);
   if(fsUpdateReq)   do_spiffs_update(fsUpdateReq);
-  // if(mcuUpdateReq)  do_mcu_update(mcuUpdateReq);
+  if(mcuUpdateReq)  do_mcu_update(mcuUpdateReq);
 }

@@ -36,9 +36,10 @@ void chkStatus(char statusIn) {
 	if((statusIn & RET_TYPE_MASK) == typeError) {
 		errorCode = (statusIn & 0x1f);
 	}
-  if((statusIn & RET_TYPE_MASK) == typeState) {
+  else if((statusIn & RET_TYPE_MASK) == typeState) {
 	  status = statusIn & spiStateByteMask;
 	  if((statusIn & spiStateByteErrFlag) == 0) errorCode = 0;
+		if(status == statusFlashing) errorCode = errorMcuFlashing;
 	}
 	if(status != lastStatus) {
     Serial.print("Status: "); Serial.println(status, HEX);

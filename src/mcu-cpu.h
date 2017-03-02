@@ -1,6 +1,6 @@
 
-#ifndef CPU_H
-#define	CPU_H
+#ifndef MCU_H
+#define	MCU_H
 
 // This file contains all definitions shared by CPU and MCU
 // and should be included in CPU and MCU apps
@@ -70,22 +70,26 @@ typedef long pos_t; // 32 bits signed
 
 // immediate command 32-bit words -- top 2 bits are zero
 // command codes enumerated here are in bottom nibble of first byte
+// commands 0, 1, and 2 must be supported as one byte in SS enable
 // set homing speeds have microstep index in byte 2 and speed param in 3-4
 // setMotorCurrent has param in bottom 5 bits
-// all others have no params
 // 4 bits
 typedef enum Cmd {
+  // all add-ons must support these one-byte commands
   nopCmd               =  0, // does nothing except get status
   statusCmd            =  1, // requests status rec returned
-  resetCmd             =  2, // clear state & hold reset pins on motors low
-  idleCmd              =  3, // abort any commands, clear vec buffers
-  homeCmd              =  4, // goes home and saves homing distance
-  moveCmd              =  5, // enough vectors need to be loaded to do this
-  clearErrorCmd        =  6, // on error, no activity until this command
-  setHomingSpeed       =  7, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed =  8, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      =  9, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 10  // set direction for each motor
+  updateFlashCode      =  2, // set flash bytes as no-app flag and reboot
+
+  // commands specific to one add-on start at 10
+  resetCmd             = 10, // clear state & hold reset pins on motors low
+  idleCmd              = 11, // abort any commands, clear vec buffers
+  homeCmd              = 12, // goes home and saves homing distance
+  moveCmd              = 13, // enough vectors need to be loaded to do this
+  clearErrorCmd        = 14, // on error, no activity until this command
+  setHomingSpeed       = 15, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed = 16, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 17, // set motorCurrent (0 to 31) immediately
+  setDirectionLevelXY  = 18  // set direction for each motor
 } Cmd;
 
 
@@ -133,7 +137,8 @@ typedef enum Status {
   statusHoming      = 2, // auto homing
   statusLocked      = 3, // idle with motor current
   statusMoving      = 4, // executing vector moves from vecBuf
-  statusMoved       = 5  // same as statusLocked but after move finishes
+  statusMoved       = 5, // same as statusLocked but after move finishes
+  statusFlashing    = 7  // waiting in boot loader for flash bytes
 } Status;
 
 // state byte...
@@ -184,19 +189,25 @@ typedef union StatusRecU {
   (((sizeof(StatusRec) % 3) == 0 ?      \
    ((sizeof(StatusRec)*4)/3) : (((sizeof(StatusRec)*4)/3) + 1)))
 
-// 5 bit code, lsb of error byte reserved for error axis
+// top 2 bits are 0b11 (typeError)
+// lsb of error byte reserved for error axis
+// 6-bit code (including axis bit)
 typedef enum Error {
-  errorFault             =  2, // driver chip fault
-  errorLimit             =  4, // hit error limit switch during move backwards
-  errorVecBufOverflow    =  6,
-  errorVecBufUnderflow   =  8,
-  errorMoveWithNoVectors = 10,
-  errorSpiByteSync       = 12,
-  errorSpiByteOverrun    = 14,
-  errorspiBytesOverrun   = 16,
-  errorSpiOvflw          = 18,
-  errorSpiWcol           = 20,
-  errorNoResponse        = 0x1f // miso automatically returns 0xff when no mcu
+  // these must be supported by all add-ons
+  errorMcuFlashing =    2,
+  errorNoResponse  = 0x3f, // miso automatically returns 0xff when no mcu
+          
+  // errors specific to add-on start at 10
+  errorFault             = 10, // driver chip fault
+  errorLimit             = 12, // hit error limit switch during move backwards
+  errorVecBufOverflow    = 14,
+  errorVecBufUnderflow   = 16,
+  errorMoveWithNoVectors = 18,
+  errorSpiByteSync       = 20,
+  errorSpiByteOverrun    = 22,
+  errorspiBytesOverrun   = 24,
+  errorSpiOvflw          = 26,
+  errorSpiWcol           = 28
 } Error;
 
 #endif
