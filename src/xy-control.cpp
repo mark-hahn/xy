@@ -6,11 +6,14 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-// void printHex8(char byte) {
-// 	String byteStr = String((int) byte, HEX);
-// 	if(byteStr.length() < 2) byteStr = "0" + byteStr;
-// 	Serial.print(byteStr);
-// }
+#define digitalRead(PWRON) 1
+
+void printHex8(char byte) {
+	String byteStr = String((int) byte, HEX);
+	if(byteStr.length() < 2) byteStr = "0" + byteStr;
+	Serial.print(byteStr);
+}
+
 // void printHex16(uint16_t i) {
 // 	printHex8(i >> 8); printHex8(i & 0x00ff);
 // }
@@ -20,104 +23,22 @@
 //   Serial.println();
 // }
 
-bool_t runningDiagonalTest = FALSE;
 
 char status = 0;
 char errorCode = 0;
 char errorAxis;
 char lastStatus = 0;
 char lastErrorCode = 0;
-char sleepCmdCounter = 0;
 
-// status rec
-StatusRecU statusRec;
-char statusRecInBuf[STATUS_SPI_BYTE_COUNT];
-char statusRecInIdx = 0;
-char bytesSinceStateByte = 0xff; // must match statusRecInIdx
-
-bool_t sentHome = TRUE;
-bool_t sentMove = TRUE;
 int8_t skipErrors = -1; // for debug only
 
-void initCtrl() {
-	initSpi();
-
-  setWordDelay(300);
-	zero2mcu(0);
-	cmd2mcu(0, sleepCmd);
-	zero2mcu(0);
-	setWordDelay(0);
-}
-
-// unpack statusRecInBuf into statusRec
-void processRecIn() {
-	char statusRecIdx = 0;
-	char curByte;
-  for(int i=0; i < STATUS_SPI_BYTE_COUNT; i++) {
-		char sixBits = statusRecInBuf[i];
-		switch(i % 4) {
-			case 0:
-			  curByte = (sixBits << 2);
-			  break;
-
-			case 1:
-			  curByte |= ((sixBits & 0x30) >> 4);
-				statusRec.bytes[statusRecIdx++] = curByte;
-				curByte  = ((sixBits & 0x0f) << 4);
-			  break;
-
-			case 2:
-			  curByte |= ((sixBits & 0x3c) >> 2);
-				statusRec.bytes[statusRecIdx++] = curByte;
-				curByte  = ((sixBits & 0x03) << 6);
-				break;
-
-			case 3:
-				statusRec.bytes[statusRecIdx++] = curByte | sixBits;;
-			  break;
-		}
-	}
-  // Serial.println(String("apiVers: ")   + (int) statusRec.rec.apiVers);
-  // Serial.println(String("mfr: ")       + (int) statusRec.rec.mfr);
-  // Serial.println(String("prod: ")      + (int) statusRec.rec.prod);
-  // Serial.println(String("vers: ")      + (int) statusRec.rec.vers);
-  Serial.println(String("homeDistX: ") + statusRec.rec.homeDistX);
-  Serial.println(String("homeDistY: ") + statusRec.rec.homeDistY);
-	//
-  // printHex32(*((uint32_t *) &statusRec.bytes[0]));
-  // printHex32(*((uint32_t *) &statusRec.bytes[4]));
-  // printHex32(*((uint32_t *) &statusRec.bytes[8]));
-
-	setWordDelay(0);
-}
-
 void chkStatus(char statusIn) {
-	if(statusIn == 0xff) {
-		status = statusNoResponse;
-		if(bytesSinceStateByte != 0xff) bytesSinceStateByte++;
-		return;
+	if((statusIn & RET_TYPE_MASK) == typeError) {
+		errorCode = (statusIn & 0x1f);
 	}
-  if((statusIn & 0xc0) == typeState) {
+  if((statusIn & RET_TYPE_MASK) == typeState) {
 	  status = statusIn & spiStateByteMask;
 	  if((statusIn & spiStateByteErrFlag) == 0) errorCode = 0;
-    if(bytesSinceStateByte == STATUS_SPI_BYTE_COUNT &&
-			      statusRecInIdx == STATUS_SPI_BYTE_COUNT)
-			processRecIn();
-		bytesSinceStateByte = statusRecInIdx = 0;
-	}
-	else {
-		if((statusIn & 0xc0) == typeData) {
-      if(bytesSinceStateByte != statusRecInIdx ||
-			   statusRecInIdx >= STATUS_SPI_BYTE_COUNT)
-				statusRecInIdx = 0;
-			else
-			  statusRecInBuf[statusRecInIdx++] = (statusIn & 0x3f);
-		}
-	  else if((statusIn & 0xc0) == typeError) {
-			errorCode = statusIn & 0x3e;
-			errorAxis = statusIn & 0x01;
-		} // else top two bits are zero
-		if(bytesSinceStateByte != 0xff) bytesSinceStateByte++;
 	}
 	if(status != lastStatus) {
     Serial.print("Status: "); Serial.println(status, HEX);
@@ -131,11 +52,9 @@ void chkStatus(char statusIn) {
   }
 	if(errorCode) {
 		if(skipErrors == -1) {
-	  	setWordDelay(300);
 		  zero2mcu(0);
 			cmd2mcu(0, clearErrorCmd);
 		  zero2mcu(0);
-	  	setWordDelay(0);
 		}
 		else skipErrors--;
 	}
@@ -144,6 +63,7 @@ void chkStatus(char statusIn) {
 }
 
 void chkDiagonalTest();
+bool_t runningDiagonalTest = FALSE;
 
 void chkCtrl(){
   digitalWrite(PWRLED, digitalRead(PWRON));
@@ -161,7 +81,7 @@ void diagonalTest() {
 }
 
 void chkDiagonalTest() {
-  if (errorCode || status == statusNoResponse) {
+  if (errorCode) {
     state = 0;
     return;
   }
@@ -171,62 +91,74 @@ void chkDiagonalTest() {
     case 0:
       if(digitalRead(PWRON) == 1) {
         // power switch just switched on
+				delay(100);  // wait 100 ms for mcu and motor drivers to wake up
         cmd2mcu(0, resetCmd);
+				cmd2mcu(0, homeCmd);
         state = 10;
-      }
-      else {
-        // power switch off
-        if(sleepCmdCounter++ == 0)
-            cmd2mcu(0, sleepCmd);
       }
       break;
 
     case 10:
-      if(status == statusSleeping ||
-         status == statusUnlocked) {
+			if(status == statusLocked) {
+				char stat;
+				// get status rec, just to see hex in console
+				do {
+					stat = getMcuStatusRec(0);
+					if(stat == 254) {
+						Serial.println("status rec too long");
+						break;
+					}
+					if((stat & RET_TYPE_MASK) == typeError) return;
+				} while (stat != 0);
+
+			  for(char i = 0; i < STATUS_REC_LEN; i++) {
+			    printHex8(statusRecInBuf[i]); Serial.print(" ");
+				}
+			  Serial.println();
+
+				digitalWrite(PWRLED, 1);
+
         //
         // void vec2mcu(char mcu, char axis, char dir, char ustep,
         //              uint16_t usecsPerPulse, uint16_t pulseCount) {
-        vec2mcu(0, X, FORWARD, 2, 1000, 1023);  // 12" but only 1023 each vec
-        vec2mcu(0, X, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, X, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, X, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, X, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, X, FORWARD, 2, 1000, 6096-5*1023);
-
+        vec2mcu(0, X, FORWARD, 2, 1000, 920);      // 45 mm, max 1023 pulses each vec
         eof2mcu(0, X);
+        Serial.println("Sent fwd vector");
 
-        vec2mcu(0, Y, FORWARD, 2, 1000, 1023);  // 12" but only 1023 each vec
-        vec2mcu(0, Y, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, Y, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, Y, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, Y, FORWARD, 2, 1000, 1023);
-        vec2mcu(0, Y, FORWARD, 2, 1000, 6096-5*1023);
-
-        eof2mcu(0, Y);
-        Serial.println("Sent vectors");
-
-        delay(500);
-        cmd2mcu(0, homeCmd);
-        Serial.println("Sent home cmd");
+				delay(7000);
+        cmd2mcu(0, moveCmd);
+        Serial.println("Sent move cmd");
         state = 20;
+				digitalWrite(PWRLED, 0);
       }
       break;
 
     case 20:
-      if(status == statusLocked) {
-        cmd2mcu(0, statusCmd);
-				Serial.println("Sent status cmd");
+      if(status == statusMoved) {
+				digitalWrite(PWRLED, 1);
+				cmd2mcu(0, idleCmd);
+        Serial.println("Sent idle cmd");
 
-        delay(500);
+        //
+        // void vec2mcu(char mcu, char axis, char dir, char ustep,
+        //              uint16_t usecsPerPulse, uint16_t pulseCount) {
+        vec2mcu(0, X, BACKWARDS, 2, 1000, 920);     // 45 mm, max 1023 pulses each vec
+        eof2mcu(0, X);
+        Serial.println("Sent back vector");
+
+				delay(7000);
         cmd2mcu(0, moveCmd);
         Serial.println("Sent move cmd");
         state = 30;
+				digitalWrite(PWRLED, 0);
       }
       break;
 
     case 30:
-      if(status == statusMoved) state = 0;
-      break;
-  }
+      if(status == statusMoved) {
+				cmd2mcu(0, idleCmd);
+				state = 10;
+			}
+			break;
+	}
 }

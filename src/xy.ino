@@ -12,6 +12,7 @@
 #include "xy-wifi.h"
 #include "xy-ajax.h"
 #include "xy-server.h"
+#include "xy-spi.h"
 #include "xy-control.h"
 
 void setup() {
@@ -31,9 +32,23 @@ void setup() {
   setupServer();
 	find_and_connect();
   // setupWebsocket();
-	initCtrl();
+	initSpi();
 
-	diagonalTest();
+	// get status rec, just to see hex in console
+	Serial.println("getting status rec");
+	char stat;
+	do {
+		delay(1);
+		stat = getMcuStatusRec(0);
+		if(stat == 254) break; // status rec too long (?)
+	} while (stat != 0);
+
+  for(char i = 0; i < STATUS_REC_LEN; i++) {
+		printHex8(statusRec[i]); Serial.print(" ");
+	}
+  Serial.println();
+
+	// diagonalTest();
 }
 
 void loop() {

@@ -3,14 +3,27 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-#define BYTE_DELAY     10   // usecs between  8-bit bytes
-#define DEF_WORD_DELAY 100   // usecs between 32-bit words (too short causes err 18)
+// MCU 0 timing
+#define MCU0_BIT_RATE  4000000 // bit rate (4 mbits)
+#define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
+#define MCU0_WORD_DELAY    100 // usecs between 32-bit words (too short causes err 18)
+
+// add-on initial timing
+// add-on timing is slow until device id is known
+#define DEF_BIT_RATE  100000 // 100 kbs
+#define DEF_BYTE_DELAY    50
+#define DEF_WORD_DELAY   200
+
+// status rec
+char statusRec[STATUS_REC_LEN];
+char statusRecInBuf[STATUS_REC_BUF_LEN];
 
 #define SCK 14
+char ssPinByMcu[3] = {15, 16, 0};
 
-int32 speedByMcu[3] = {4000000, 4000000, 4000000};
-char  ssPinByMcu[3] = {15, 16, 0};
-uint16_t wordDelay = DEF_WORD_DELAY;
+int32    speedByMcu[3]     = {MCU0_BIT_RATE,   DEF_BIT_RATE,   DEF_BIT_RATE  };
+uint16_t byteDelayByMcu[3] = {MCU0_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY};
+uint16_t wordDelayByMcu[3] = {MCU0_WORD_DELAY, DEF_WORD_DELAY, DEF_WORD_DELAY};
 
 void initSpi() {
   pinMode(SCK, OUTPUT); // why?
@@ -21,11 +34,6 @@ void initSpi() {
   }
 	SPI.begin();
 	SPI.setHwCs(false);  // our code will drive SS, not library
-}
-
-void setWordDelay(uint16_t wordDelayIn) {
-  wordDelay = wordDelayIn;
-  if(wordDelay == 0) wordDelay = DEF_WORD_DELAY;
 }
 
 char byte2mcu(char mcu, char byte) {
@@ -40,17 +48,17 @@ char byte2mcu(char mcu, char byte) {
 char bytes2mcu(char mcu, char *bytes) {
 	digitalWrite(ssPinByMcu[mcu],0);
   char status = byte2mcu(bytes[3], mcu);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(bytes[2], mcu);
-  delayMicroseconds(BYTE_DELAY);
+  delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(bytes[1], mcu);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(bytes[0], mcu);
   digitalWrite(ssPinByMcu[mcu],1);
-  delayMicroseconds(wordDelay);
+  delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
 }
 
@@ -58,19 +66,19 @@ char bytes2mcu(char mcu, char *bytes) {
 char ints2mcu(char mcu, uint16_t int1, uint16_t int2) {
 	digitalWrite(ssPinByMcu[mcu],0);
   char status = byte2mcu(mcu, ((char *) &int1)[1]);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(mcu, ((char *) &int1)[0]);
-  delayMicroseconds(BYTE_DELAY);
+  delayMicroseconds(byteDelayByMcu[mcu]);
 
   byte2mcu(mcu, ((char *) &int2)[1]);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(mcu, ((char *) &int2)[0]);
-  delayMicroseconds(BYTE_DELAY);
+  delayMicroseconds(byteDelayByMcu[mcu]);
 
   digitalWrite(ssPinByMcu[mcu],1);
-  delayMicroseconds(wordDelay);
+  delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
 }
 
@@ -89,19 +97,19 @@ char zero2mcu(char mcu) {
 char cmd2mcu(char mcu, char cmd) {
 	digitalWrite(ssPinByMcu[mcu],0);
   char status = byte2mcu(mcu, cmd);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
 	byte2mcu(mcu, 0);
-  delayMicroseconds(BYTE_DELAY);
+  delayMicroseconds(byteDelayByMcu[mcu]);
 
   byte2mcu(mcu, 0);
-	delayMicroseconds(BYTE_DELAY);
+	delayMicroseconds(byteDelayByMcu[mcu]);
 
   byte2mcu(mcu, 0);
-  delayMicroseconds(BYTE_DELAY);
+  delayMicroseconds(byteDelayByMcu[mcu]);
 
   digitalWrite(ssPinByMcu[mcu],1);
-  delayMicroseconds(wordDelay);
+  delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
 }
 
@@ -127,4 +135,96 @@ char delay2mcu(char mcu, char axis, uint16_t delayUsecs) {
 // last vector in move, change mcu state from moving to locked
 char eof2mcu(char mcu, char axis) {
   return vec2mcu(mcu, axis, 0, 0, 1, 0);
+}
+
+char getMcuState(char mcu) {
+  char mcu_state;
+  do {mcu_state = byte2mcu(mcu, nopCmd);} while(mcu_state == 0);
+  return mcu_state;
+}
+
+// unpack statusRecInBuf into statusRec
+void unpackRec(char recLen) {
+	char statusRecIdx = 0;
+	char curByte;
+  for(int i=0; i < recLen; i++) {
+		char sixBits = statusRecInBuf[i];
+		switch(i % 4) {
+			case 0:
+			  curByte = (sixBits << 2);
+			  break;
+
+			case 1:
+			  curByte |= ((sixBits & 0x30) >> 4);
+				statusRec[statusRecIdx++] = curByte;
+				curByte  = ((sixBits & 0x0f) << 4);
+			  break;
+
+			case 2:
+			  curByte |= ((sixBits & 0x3c) >> 2);
+				statusRec[statusRecIdx++] = curByte;
+				curByte  = ((sixBits & 0x03) << 6);
+				break;
+
+			case 3:
+				statusRec[statusRecIdx++] = curByte | sixBits;;
+			  break;
+		}
+	}
+}
+
+// looks for state byte, state rec, and a final state byte
+// if not, state byte is returned
+// if found then zero is returned;
+// if rec longer than buffer, 254 is returned
+char getMcuStatusRec(char mcu) {
+  char byteIn;
+  char recLen = 0;
+  char statusRecInIdx = 0;
+  char bytesSinceStateByte;
+  bool_t foundStateByte = FALSE;
+
+  // scan for data byte skipping state bytes
+  do{
+    byteIn = getMcuState(mcu);
+    if(((byteIn & 0xc0) != typeState) ||
+        ((byteIn & spiStateByteErrFlag) != 0))
+      return byteIn; // clean state byte not found
+    foundStateByte = TRUE;
+  } while ((byteIn & 0xc0) != typeData);
+  if(!foundStateByte) return getMcuState(mcu);
+
+  // we have the first data byte that followed a state byte
+  bytesSinceStateByte = 1;
+  do {
+    if((byteIn & 0xc0) == typeData &&
+         statusRecInIdx < STATUS_REC_BUF_LEN) {
+      char statusData = (byteIn & 0x3f);
+      statusRecInBuf[statusRecInIdx++] = statusData;
+
+      // first byte is rec len
+      if(bytesSinceStateByte == 1) {
+        recLen = statusData;
+        if (recLen > STATUS_REC_BUF_LEN) return 254;
+      }
+    }
+    else {
+      if((byteIn & 0xc0) == typeState &&
+        ((byteIn & spiStateByteErrFlag) == 0) &&
+          bytesSinceStateByte == recLen &&
+          statusRecInIdx == recLen) {
+        unpackRec(recLen);
+        return 0;  // success
+      }
+      else
+        return byteIn; // status rec aborted
+    }
+    byteIn = byte2mcu(mcu, nopCmd);
+    // data bytes must be sequential
+    if(!byteIn) return getMcuState(mcu);
+    bytesSinceStateByte++;
+
+  } while(bytesSinceStateByte <= recLen);
+
+  return getMcuState(mcu); // too long error
 }
