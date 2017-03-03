@@ -43,6 +43,14 @@ char byte2mcu(char mcu, char byte) {
   return byteBack;
 }
 
+char byte2mcuWithSS(char mcu, char byte) {
+	digitalWrite(ssPinByMcu[mcu],0);
+  char byteBack = byte2mcu(mcu, byte);
+  digitalWrite(ssPinByMcu[mcu],1);
+  delayMicroseconds(wordDelayByMcu[mcu]);
+  return byteBack;
+}
+
 // array is little-endian (unusual)
 // spi is big-endian
 char bytes2mcu(char mcu, char *bytes) {
@@ -139,7 +147,13 @@ char eof2mcu(char mcu, char axis) {
 
 char getMcuState(char mcu) {
   char mcu_state;
-  do {mcu_state = byte2mcu(mcu, nopCmd);} while(mcu_state == 0);
+  do {
+  	digitalWrite(ssPinByMcu[mcu], 0);
+    mcu_state = byte2mcu(mcu, nopCmd);
+  	digitalWrite(ssPinByMcu[mcu], 1);
+    delayMicroseconds(wordDelayByMcu[mcu]);
+    if(mcu_state == 0) delay(1);
+  } while(mcu_state == 0);
   return mcu_state;
 }
 
@@ -174,44 +188,53 @@ void unpackRec(char recLen) {
 }
 
 // looks for state byte, state rec, and a final state byte
-// if not, state byte is returned
+// if not found state byte is returned
 // if found then zero is returned;
 // if rec longer than buffer, 254 is returned
+// 255 returned on missing mcu
 char getMcuStatusRec(char mcu) {
   char byteIn;
-  char recLen = 0;
+  char recLen = 255, recLen1;
   char statusRecInIdx = 0;
-  char bytesSinceStateByte;
   bool_t foundStateByte = FALSE;
+  char nonTypeCount = 0;
+
+  // request status rec
+  byte2mcuWithSS(mcu, statusCmd);
 
   // scan for data byte skipping state bytes
-  do{
+  while(1){
     byteIn = getMcuState(mcu);
+    if((byteIn & 0xc0) == typeData) break;
+    if(++nonTypeCount > 10) return getMcuState(mcu);
+    // Serial.println("byteIn: " + String(byteIn, HEX));
+
     if(((byteIn & 0xc0) != typeState) ||
         ((byteIn & spiStateByteErrFlag) != 0))
-      return byteIn; // clean state byte not found
+      // must be clean state byte to continue
+      return byteIn;
     foundStateByte = TRUE;
-  } while ((byteIn & 0xc0) != typeData);
+  }
   if(!foundStateByte) return getMcuState(mcu);
 
   // we have the first data byte that followed a state byte
-  bytesSinceStateByte = 1;
-  do {
+  while(1) {
     if((byteIn & 0xc0) == typeData &&
          statusRecInIdx < STATUS_REC_BUF_LEN) {
       char statusData = (byteIn & 0x3f);
       statusRecInBuf[statusRecInIdx++] = statusData;
 
       // first byte is rec len
-      if(bytesSinceStateByte == 1) {
-        recLen = statusData;
+      if(statusRecInIdx == 1)
+        recLen1 = statusData << 2;
+      else if(statusRecInIdx == 2) {
+        recLen = recLen1 | (statusData & 0x30) >> 4;
         if (recLen > STATUS_REC_BUF_LEN) return 254;
       }
     }
     else {
       if((byteIn & 0xc0) == typeState &&
         ((byteIn & spiStateByteErrFlag) == 0) &&
-          bytesSinceStateByte == recLen &&
           statusRecInIdx == recLen) {
         unpackRec(recLen);
         return 0;  // success
@@ -219,14 +242,10 @@ char getMcuStatusRec(char mcu) {
       else
         return byteIn; // status rec aborted
     }
-    byteIn = byte2mcu(mcu, nopCmd);
+    byteIn = byte2mcuWithSS(mcu, nopCmd);
     // data bytes must be sequential
     if(!byteIn) return getMcuState(mcu);
-    bytesSinceStateByte++;
-
-  } while(bytesSinceStateByte <= recLen);
-
-  return getMcuState(mcu); // too long error
+  }
 }
 
 // === these definitions much match the ones in pic-spi-ldr/spi.h ===
@@ -243,9 +262,7 @@ void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
   }
   while(getMcuState(mcu) != statusFlashing) {
     // start boot loader in mcu
-  	digitalWrite(ssPinByMcu[mcu],0);
-    char status = byte2mcu(mcu, updateFlashCode);
-    digitalWrite(ssPinByMcu[mcu],1);
+    char status = byte2mcuWithSS(mcu, updateFlashCode);
     // give some time for flash write and reset
     delay(100);
     getMcuState(mcu); // ignore first response
@@ -260,6 +277,7 @@ void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
   byte2mcu(mcu, addr & 0xff);
   delayMicroseconds(byteDelayByMcu[mcu]);
   digitalWrite(ssPinByMcu[mcu],1);
+  delayMicroseconds(wordDelayByMcu[mcu]);
   // wait for erase to finish
   while(getMcuState(mcu) != statusFlashing);
 
@@ -275,11 +293,12 @@ void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
     byte2mcu(mcu, buf[i]);
   }
   digitalWrite(ssPinByMcu[mcu],1);
+  delayMicroseconds(wordDelayByMcu[mcu]);
   // wait for flash write to finish
   while(getMcuState(mcu) != statusFlashing);
 }
 
-void endFlashMcuBytes() {
+void endFlashMcuBytes(char mcu) {
   // make sure mcu is ready and flashing
   while(getMcuState(mcu) != statusFlashing);
   // reset mcu

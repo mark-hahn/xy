@@ -5,3 +5,5 @@
 *.log
 scripts
 nohup.out
+.clang_complete
+.gcc-flags.json

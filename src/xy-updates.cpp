@@ -39,6 +39,17 @@ void do_firmware_update(AsyncWebServerRequest *request) {
 
 void do_mcu_update(AsyncWebServerRequest *request) {
   mcuUpdateReq = (AsyncWebServerRequest *) 0;
+
+  char mcu, numParams = request->params();
+  for(char i=0; i < numParams; i++) {
+    AsyncWebParameter* p = request->getParam(i);
+    if(p->name() == "mcu") mcu = p->value().toInt();
+  }
+  if(!mcu) {
+    Serial.println(
+      String("http request for mcu update missing mcu param: ") + String(request->url()));
+    return;
+  }
   const char *host = "hahnca.com";
 	request->send(200, "text/plain", "Started mcu update");
   Serial.println(String("Started mcu update from ") + host);
@@ -63,7 +74,7 @@ void do_mcu_update(AsyncWebServerRequest *request) {
   while(client.available()){
     String line = client.readStringUntil('\n');
     if(line == "\r") pastHeaders |= true;
-    if(pastHeaders) ajaxFlashHexLine(line.c_str());
+    if(pastHeaders) ajaxFlashHexLine(mcu, line.c_str());
   }
 }
 

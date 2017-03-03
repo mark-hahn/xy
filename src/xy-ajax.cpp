@@ -1,12 +1,13 @@
 
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
+#include <Arduino.h>
 
 #include "xy-ajax.h"
 #include "xy-server.h"
 #include "xy-wifi.h"
 #include "xy-eeprom.h"
-#include "spi.h"
+#include "xy-spi.h"
 
 AsyncWebServerRequest *ssidRequest;
 AsyncWebServerRequest *resetReq;
@@ -38,7 +39,7 @@ char hexByte2int(const char *hex, char idx) {
 
 unsigned int upperBytesAddr = 0;
 
-void ajaxFlashHexLine(const char *line) {
+void ajaxFlashHexLine(char mcu, const char *line) {
   Serial.println(String("ajaxFlashHexLine: ") + line);
   if(line[0] != ':') return;
   char buf[65];
@@ -60,8 +61,8 @@ void ajaxFlashHexLine(const char *line) {
   }
   switch (type) {
     case 4: upperBytesAddr = (buf[0] << 8) | buf[1];
-    case 0: flashMcuBytes((upperBytesAddr << 16) | addr, buf, len); break;
-    case 1: upperBytesAddr = 0; endFlashMcuBytes(); break;
+    case 0: flashMcuBytes(mcu, (upperBytesAddr << 16) | addr, buf, len); break;
+    case 1: upperBytesAddr = 0; endFlashMcuBytes(mcu); break;
   }
 }
 

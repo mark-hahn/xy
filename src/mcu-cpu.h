@@ -1,6 +1,6 @@
 
-#ifndef MCU_H
-#define	MCU_H
+#ifndef CPU_H
+#define	CPU_H
 
 // This file contains all definitions shared by CPU and MCU
 // and should be included in CPU and MCU apps
@@ -78,18 +78,18 @@ typedef enum Cmd {
   // all add-ons must support these one-byte commands
   nopCmd               =  0, // does nothing except get status
   statusCmd            =  1, // requests status rec returned
-  updateFlashCode      =  2, // set flash bytes as no-app flag and reboot
+  clearErrorCmd        =  2, // on error, no activity until this command
+  updateFlashCode      =  3, // set flash bytes as no-app flag and reboot
 
   // commands specific to one add-on start at 10
   resetCmd             = 10, // clear state & hold reset pins on motors low
   idleCmd              = 11, // abort any commands, clear vec buffers
   homeCmd              = 12, // goes home and saves homing distance
   moveCmd              = 13, // enough vectors need to be loaded to do this
-  clearErrorCmd        = 14, // on error, no activity until this command
-  setHomingSpeed       = 15, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed = 16, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      = 17, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 18  // set direction for each motor
+  setHomingSpeed       = 14, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed = 15, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 16, // set motorCurrent (0 to 31) immediately
+  setDirectionLevelXY  = 17  // set direction for each motor
 } Cmd;
 
 
@@ -196,18 +196,22 @@ typedef enum Error {
   // these must be supported by all add-ons
   errorMcuFlashing =    2,
   errorNoResponse  = 0x3f, // miso automatically returns 0xff when no mcu
-          
+
   // errors specific to add-on start at 10
   errorFault             = 10, // driver chip fault
   errorLimit             = 12, // hit error limit switch during move backwards
   errorVecBufOverflow    = 14,
   errorVecBufUnderflow   = 16,
   errorMoveWithNoVectors = 18,
-  errorSpiByteSync       = 20,
-  errorSpiByteOverrun    = 22,
-  errorspiBytesOverrun   = 24,
-  errorSpiOvflw          = 26,
-  errorSpiWcol           = 28
+
+  // comm errors must start at errorSpiByteSync and be last
+  errorSpiByteSync       = 48,
+  errorSpiByteOverrun    = 50,
+  errorSpiBytesOverrun   = 52,
+  errorSpiOvflw          = 54,
+  errorSpiWcol           = 56
 } Error;
+
+#define spiCommError(byte) ((byte >= (0xc0 | errorSpiByteSync)))
 
 #endif

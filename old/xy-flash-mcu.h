@@ -17,8 +17,8 @@
 #define APP_FLASH_ADDR     0x200 /* 512 byte bootloader */
 
 void sendMcuAddr(unsigned int flashWordAddr);  // for testing
-void flashMcuBytes(unsigned int flashByteAddr, char *buf, char qty);
-void endFlashMcuBytes();
+void flashMcuBytes(char mcu, unsigned int flashByteAddr, char *buf, char qty);
+void endFlashMcuBytes(char mcu);
 void resetMcu();
 
 #endif
