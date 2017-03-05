@@ -40,7 +40,7 @@ char hexByte2int(const char *hex, char idx) {
 unsigned int upperBytesAddr = 0;
 
 void ajaxFlashHexLine(char mcu, const char *line) {
-  Serial.println(String("ajaxFlashHexLine: ") + line);
+  // Serial.println(String("ajaxFlashHexLine: ") + line);
   if(line[0] != ':') return;
   char buf[65];
   char i, len = hexByte2int(line, 1);
@@ -65,7 +65,7 @@ void ajaxFlashHexLine(char mcu, const char *line) {
     case 1:
       Serial.println(String("mcu flashed, reseting it"));
       upperBytesAddr = 0;
-      endFlashMcuBytes(mcu); 
+      endFlashMcuBytes(mcu);
       break;
   }
 }

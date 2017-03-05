@@ -303,13 +303,16 @@ void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
     Serial.println("erasing block to start boot loader, updateFlashCodecmd");
     // start boot loader in mcu
     char status = byte2mcuWithSS(mcu, updateFlashCode);
-    delay(1);
-    getMcuState(mcu); // ignore first response
+    delay(1000);
+    char stat = getMcuState(mcu); // ignore first response
+    Serial.println(String("first resp after updateFlashCodecmd: ") + String(stat, HEX));
+    while(getMcuState(mcu) != 7);
+    Serial.println("have 7");
     memset(flashBuf, 0xff, MAX_BYTES_IN_BLOCK);
   }
   // lastBlkAddr = 0;
   // return;
-  
+
   unsigned int blkAddr = ((addr / MAX_BYTES_IN_BLOCK) * MAX_BYTES_IN_BLOCK) / 2;
   // Serial.println("flashMcuBytes(blkAddr): " + String(blkAddr, HEX));
 

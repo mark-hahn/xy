@@ -75,7 +75,6 @@ typedef long pos_t; // 32 bits signed
 // setMotorCurrent has param in bottom 5 bits
 // 4 bits
 typedef enum Cmd {
-  // all add-ons must support these one-byte commands
   nopCmd               =  0, // does nothing except get status
   statusCmd            =  1, // requests status rec returned
   clearErrorCmd        =  2, // on error, no activity until this command
@@ -91,6 +90,12 @@ typedef enum Cmd {
   setMotorCurrent      = 16, // set motorCurrent (0 to 31) immediately
   setDirectionLevelXY  = 17  // set direction for each motor
 } Cmd;
+
+/////////////////////////////////  Z COMMAND  /////////////////////////////////
+// top 2 bits of zero is normal command from above, statusCmd etc.
+
+#define Z_SET_CURL_CMD 0x80   // top == 0b10 sets Low  2 bits solenoid current
+#define Z_SET_CURH_CMD 0xc0   // top == 0b11 sets High 6 bits solenoid current
 
 
 /////////////////////////////////  Vectors  ///////////////////////////
@@ -184,6 +189,8 @@ typedef union StatusRecU {
   StatusRec rec;
   char      bytes[sizeof(StatusRec)];
 } StatusRecU;
+
+#define STATUS_SPI_BYTE_COUNT_MIN 7 // just mfr, prod, vers, 40 bits in 7 bytes
 
 #define STATUS_SPI_BYTE_COUNT           \
   (((sizeof(StatusRec) % 3) == 0 ?      \
