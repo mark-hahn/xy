@@ -45,9 +45,17 @@ void chkStatus(char statusIn) {
     Serial.print("Status: "); Serial.println(status, HEX);
   }
 	if(errorCode != lastErrorCode) {
-		if( errorCode)
-			Serial.println(String("Error, code: ") + String(errorCode, DEC) +
-										             ", axis: "  + String(errorAxis, DEC));
+		if(errorCode) {
+			switch(errorCode & 0x3e) {
+				 case 2: Serial.println("mcu is waiting for flashing"); break;
+				case 30: Serial.println("mcu not responding"); break;
+        default:
+				  if(errorCode >= errorSpiByteSync)
+            Serial.println("comm error: ");
+					Serial.println(String("Error, code: ") + String(errorCode, DEC) +
+												             ", axis: "  + String(errorAxis, DEC));
+			}
+		}
 		else
 		  Serial.println("Error clear");
   }
@@ -82,6 +90,9 @@ void diagonalTest() {
 }
 
 void chkDiagonalTest() {
+  char statusIn = zero2mcu(0);
+  if(statusIn) chkStatus(statusIn);
+
   if (errorCode) {
     state = 0;
     return;

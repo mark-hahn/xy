@@ -1,4 +1,5 @@
 
+#include <Arduino.h>
 #include <SPI.h>
 #include "xy-spi.h"
 #include "mcu-cpu.h"
@@ -27,13 +28,14 @@ uint16_t wordDelayByMcu[3] = {MCU0_WORD_DELAY, DEF_WORD_DELAY, DEF_WORD_DELAY};
 
 void initSpi() {
   pinMode(SCK, OUTPUT); // why?
+	SPI.begin();
+	SPI.setHwCs(false);  // our code will drive SS, not library
+
+  // start all three MCU SS high
   for (char mcu=0; mcu < 3; mcu++) {
-    digitalWrite(ssPinByMcu[mcu],1); // should this be before or after pinMode ?
     pinMode(ssPinByMcu[mcu], OUTPUT);
     digitalWrite(ssPinByMcu[mcu],1);
   }
-	SPI.begin();
-	SPI.setHwCs(false);  // our code will drive SS, not library
 }
 
 char byte2mcu(char mcu, char byte) {
@@ -254,56 +256,79 @@ char getMcuStatusRec(char mcu) {
 #define ERASE_CMD  0x10  // cmd byte + 2-byte word address
 #define WRITE_CMD  0x20  // cmd byte + 2-byte word address and 32 words(64 bytes)
 #define RESET_CMD  0x30  // cmd byte only, reset processor, issue when finished
+#define MAX_BYTES_IN_BLOCK 64  // always writes this size
 
-void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
-  if(len != 64 || (addr % 32) != 0) {
-    Serial.println(String("invalid flashMcuBytes params: ") + addr + ", " + len);
-    return;
-  }
-  while(getMcuState(mcu) != statusFlashing) {
-    // start boot loader in mcu
-    char status = byte2mcuWithSS(mcu, updateFlashCode);
-    // give some time for flash write and reset
-    delay(100);
-    getMcuState(mcu); // ignore first response
-  }
+char flashBuf[MAX_BYTES_IN_BLOCK];
+bool_t flashBufDirty = FALSE;
+unsigned int lastBlkAddr = 0xffff;
 
+void flashBlk(char mcu, unsigned int blkAddr) {
   // erase block
   digitalWrite(ssPinByMcu[mcu],0);
   byte2mcu(mcu, ERASE_CMD);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, addr >> 8);
+  byte2mcu(mcu, blkAddr >> 8);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, addr & 0xff);
+  byte2mcu(mcu, blkAddr & 0xff);
   delayMicroseconds(byteDelayByMcu[mcu]);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   // wait for erase to finish
+  delay(1);
   while(getMcuState(mcu) != statusFlashing);
 
   // write block
   digitalWrite(ssPinByMcu[mcu],0);
-  byte2mcu(mcu, ERASE_CMD);
+  byte2mcu(mcu, WRITE_CMD);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, addr >> 8);
+  byte2mcu(mcu, blkAddr >> 8);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, addr & 0xff);
-  for(char i=0; i < len; i++) {
+  byte2mcu(mcu, blkAddr & 0xff);
+  for(char i=0; i < MAX_BYTES_IN_BLOCK; i++) {
     delayMicroseconds(byteDelayByMcu[mcu]);
-    byte2mcu(mcu, buf[i]);
+    byte2mcu(mcu, flashBuf[i]);
   }
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
-  // wait for flash write to finish
+  // wait for write to finish
+  delay(1);
   while(getMcuState(mcu) != statusFlashing);
+
+  memset(flashBuf, 0xff, MAX_BYTES_IN_BLOCK);
+  flashBufDirty = FALSE;
+}
+
+void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
+  if(lastBlkAddr == 0xffff) {
+    Serial.println("erasing block to start boot loader, updateFlashCodecmd");
+    // start boot loader in mcu
+    char status = byte2mcuWithSS(mcu, updateFlashCode);
+    delay(1);
+    getMcuState(mcu); // ignore first response
+    memset(flashBuf, 0xff, MAX_BYTES_IN_BLOCK);
+  }
+  // lastBlkAddr = 0;
+  // return;
+  
+  unsigned int blkAddr = ((addr / MAX_BYTES_IN_BLOCK) * MAX_BYTES_IN_BLOCK) / 2;
+  // Serial.println("flashMcuBytes(blkAddr): " + String(blkAddr, HEX));
+
+  if(lastBlkAddr != 0xffff && lastBlkAddr != blkAddr)
+     flashBlk(mcu, lastBlkAddr);
+  memcpy(&flashBuf[addr % MAX_BYTES_IN_BLOCK], buf, len);
+  flashBufDirty = TRUE;
+  lastBlkAddr = blkAddr;
 }
 
 void endFlashMcuBytes(char mcu) {
+  if(flashBufDirty) flashBlk(mcu, lastBlkAddr);
+
   // make sure mcu is ready and flashing
   while(getMcuState(mcu) != statusFlashing);
   // reset mcu
   digitalWrite(ssPinByMcu[mcu],0);
   byte2mcu(mcu, RESET_CMD);
   digitalWrite(ssPinByMcu[mcu],1);
-  // doesn't wait for response since mcu is rebooting
+  // no response since mcu is rebooting
+  Serial.println("mcu reset");
 }

@@ -40,25 +40,25 @@ void do_firmware_update(AsyncWebServerRequest *request) {
 void do_mcu_update(AsyncWebServerRequest *request) {
   mcuUpdateReq = (AsyncWebServerRequest *) 0;
 
-  char mcu, numParams = request->params();
+  char mcu = 0xff, numParams = request->params();
   for(char i=0; i < numParams; i++) {
     AsyncWebParameter* p = request->getParam(i);
     if(p->name() == "mcu") mcu = p->value().toInt();
   }
-  if(!mcu) {
+  if(mcu == 0xff) {
     Serial.println(
       String("http request for mcu update missing mcu param: ") + String(request->url()));
     return;
   }
   const char *host = "hahnca.com";
 	request->send(200, "text/plain", "Started mcu update");
-  Serial.println(String("Started mcu update from ") + host);
+  Serial.println(String("Started mcu update from ") + request->url());
   WiFiClient client;
   if (!client.connect(host, 80)) {
     Serial.println("connection failed");
     return;
   }
-  String url = "/xymcu/xy-mcu-a.X.production.hex";
+  String url = "/xymcu/xy-mcu.production.hex";
   client.print(String("GET ") + url + " HTTP/1.1\r\n" +
                  "Host: " + host + "\r\n" +
                  "Connection: close\r\n\r\n");

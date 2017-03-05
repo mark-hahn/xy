@@ -36,28 +36,28 @@ void setup() {
   // setupWebsocket();
 	initSpi();
 
-	// get status rec, just to see hex in console
-	Serial.println("getting status rec");
-	char stat;
-	while(1) {
-		delay(1);
-		stat = getMcuStatusRec(0);
-    if(spiCommError(stat)) {
-      byte2mcuWithSS(0, clearErrorCmd);
-      continue;
-    }
-		break;
-	}
-	if(stat == 0) {
-    Serial.println("got status rec, status: " + String(stat, HEX));
-	  for(char i = 0; i < STATUS_REC_LEN; i++) {
-			printHex8(statusRec[i]); Serial.print(" ");
-		}
-	  Serial.println();
-	} else
-    Serial.println("status rec non-zero status (hex): " + String(stat, HEX));
+	// // get status rec, just to see hex in console
+	// Serial.println("getting status rec");
+	// char stat;
+	// while(1) {
+	// 	delay(1);
+	// 	stat = getMcuStatusRec(0);
+  //   if(spiCommError(stat)) {
+  //     byte2mcuWithSS(0, clearErrorCmd);
+  //     continue;
+  //   }
+	// 	break;
+	// }
+	// if(stat == 0) {
+  //   Serial.println("got status rec, status: " + String(stat, HEX));
+	//   for(char i = 0; i < STATUS_REC_LEN; i++) {
+	// 		printHex8(statusRec[i]); Serial.print(" ");
+	// 	}
+	//   Serial.println();
+	// } else
+  //   Serial.println("status rec non-zero status (hex): " + String(stat, HEX));
 
-	// diagonalTest();
+	diagonalTest();
 }
 
 void loop() {

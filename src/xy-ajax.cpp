@@ -62,7 +62,11 @@ void ajaxFlashHexLine(char mcu, const char *line) {
   switch (type) {
     case 4: upperBytesAddr = (buf[0] << 8) | buf[1];
     case 0: flashMcuBytes(mcu, (upperBytesAddr << 16) | addr, buf, len); break;
-    case 1: upperBytesAddr = 0; endFlashMcuBytes(mcu); break;
+    case 1:
+      Serial.println(String("mcu flashed, reseting it"));
+      upperBytesAddr = 0;
+      endFlashMcuBytes(mcu); 
+      break;
   }
 }
 

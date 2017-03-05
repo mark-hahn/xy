@@ -13,3 +13,132 @@
 - terminal in app
 
 - rest of app
+
+
+I've written an SPI bootloader for the PIC16LF15355.  It is about 0x140 words in size.  It loads data and writes it at 0x200 correctly.
+
+But it won't start running at all unless it is started with the "play" button in mplab.  If I remove the PICkit3 and power cycle the board it doesn't do anything.  I have an output pin set to emit various pulse counts depending on the location in the code.  Pulses come out fine with the PICkit3 starting it up but not at all on a power cycle.
+
+Here is the main code ...
+
+[code]
+// SPI bootloader for PIC16LF15355
+#pragma config FEXTOSC = OFF // External Oscillator mode selection bits (Oscillator not enabled)
+#pragma config RSTOSC = HFINT32 // Power-up default value for COSC bits (HFINTOSC with OSCFRQ= 32 MHz and CDIV = 1:1)
+#pragma config CLKOUTEN = OFF // Clock Out Enable bit (CLKOUT function is disabled; i/o or oscillator function on OSC2)
+#pragma config CSWEN = ON // Clock Switch Enable bit (Writing to NOSC and NDIV is allowed)
+#pragma config FCMEN = ON // Fail-Safe Clock Monitor Enable bit (FSCM timer enabled)
+#pragma config MCLRE = OFF // Master Clear Enable bit (MCLR pin is NOT a Clear function)
+#pragma config PWRTE = OFF // Power-up Timer Enable bit (PWRT disabled)
+#pragma config LPBOREN = OFF // Low-Power BOR enable bit (ULPBOR disabled)
+#pragma config BOREN = ON // Brown-out reset enable bits (Brown-out Reset Enabled, SBOREN bit is ignored)
+#pragma config BORV = LO // Brown-out Reset Voltage Selection (Brown-out Reset Voltage (VBOR) set to 1.9V on LF, and 2.45V on F Devices)
+#pragma config ZCD = OFF // Zero-cross detect disable (Zero-cross detect circuit is disabled at POR.)
+#pragma config PPS1WAY = ON // Peripheral Pin Select one-way control (The PPSLOCK bit can be cleared and set only once in software)
+#pragma config STVREN = ON // Stack Overflow/Underflow Reset Enable bit (Stack Overflow or Underflow will cause a reset)
+#pragma config WDTCPS = WDTCPS_31 // WDT Period Select bits (Divider ratio 1:0x10000; software control of WDTPS)
+#pragma config WDTE = OFF // WDT operating mode (WDT enabled regardless of sleep; SWDTEN ignored)
+#pragma config WDTCWS = WDTCWS_7 // WDT Window Select bits (window always open (100%); software control; keyed access not required)
+#pragma config WDTCCS = SC // WDT input clock selector (Software Control)
+#pragma config BBSIZE = BB512 // (512 char boot block size)
+#pragma config BBEN = OFF // (Boot Block disabled)
+#pragma config SAFEN = OFF // (SAF disabled)
+#pragma config WRTAPP = OFF // (Application not write protected)
+#pragma config WRTB = OFF // (Boot Block not write protected)
+#pragma config WRTC = OFF // (Configuration Register not write protected)
+#pragma config WRTSAF = OFF // (SAF not write protected)
+#pragma config LVP = OFF // Low Voltage Programming Enable bit (High Voltage on MCLR/Vpp must be used for programming)
+#pragma config CP = OFF // UserNVM Program memory code protection bit (UserNVM code protection disabled)
+
+#include <xc.h>
+#define _str(x) #x
+#define str(x) _str(x)
+
+void interrupt main_isr() { // redirect 0x0004 int to 0x0204
+  asm ("pagesel " str (NEW_INTERRUPT_VECTOR));
+  asm ("goto " str (NEW_INTERRUPT_VECTOR));
+}
+
+void main(void) {
+  INTCON = 0; // turn off all interrupts
+  ANSELA = 0; // no analog inputs
+  ANSELB = 0; // these &^%$&^ regs cause a lot of trouble
+  ANSELC = 0; // they should not default to on and override everything else
+  FAN_TRIS = 0; // debug
+  FAN_LAT = 0;
+
+  if(haveApp()) { // jump to app
+    for(char i=0; i < 4; i++) FAN_LAT = !FAN_LAT;
+    STKPTR = 0x1F;
+    asm ("pagesel " str(NEW_RESET_VECTOR));
+    asm ("goto " str(NEW_RESET_VECTOR));
+  }
+  // run bootloader
+  for(char i=0; i < 2; i++) FAN_LAT = !FAN_LAT;
+  spiInit();
+  while(1) chkSpi();
+}
+[/code]
+
+The haveApp routine is ...
+
+[code]
+char haveApp() {
+  NVMADRH = NEW_RESET_VECTOR >> 8;
+  NVMADRL = 0;
+  NVMCON1 = 1; // set RD bit and clear other write stuff
+  char haveIt = ((NVMDATH << 8 | NVMDATL) != 0x3FFF);
+  if(haveIt)
+    for(char i=0; i < 6; i++) FAN_LAT = !FAN_LAT;
+  else
+    for(char i=0; i < 8; i++) FAN_LAT = !FAN_LAT;
+  return haveIt;
+}
+[/code]
+
+FAN_LAT is the debug pin output latch.  As you can see it should pulse no matter what haveApp returns.
+
+I have never seen the case where haveApp returns TRUE.  When I start the code with mplab it always blows away the app memory.  And it won't start any other way.  I've set the linker Rom Range to "0-0x1ff" but it still blows away all my memory.
+
+Any ideas on what I should try next?
+
+P.S.  I've tried it with BBEN (boot block) enabled and disabled.  I have no idea what that option does anyway.  I'll give anyone who can explain that some extra karma points.  The manual says it divides the memory into boot and application memory.  But no matter whether it is set or not the program memory view says "application memory" at location zero.  Also I see no behavior difference.
+
+
+
+compiled hex output with code offset
+-----
+I've written an SPI bootloader for the PIC16LF15355.  It seems to work correctly but I've been unable to test it because my app hex file has weird contents.  I compile the app with a code offset of 0x200.  The hex file starts at ox200 (0x400 in bytes) like it should.  But the first eight instructions look nothing like reset and interrupt vector code.
+
+Here are the first two lines of the output hex file.  I've added spaces for clarity.
+
+[code]
+:1 00400 00 8231782A0134FE347E14823140017F08 23
+:1 00410 00 F1004E010F1C1D2A0F1043010C08F000 C3
+[/code]
+
+Note that my loader loaded this data correctly ...
+
+[code]
+     514 0200 0231 SUBWF 0x1B1, W
+     515 0201 382A IORLW 0x2A
+     516 0202 0134 CLRW
+     517 0203 3E34 ADDLW 0x34
+
+     518 0204 3E14 isr ADDLW 0x14
+     519 0205 0231 SUBWF 0x1B1, W
+     520 0206 0001 RESET
+     521 0207 3F08 MOVIW [8]FSR0
+[/code]
+
+What am I doing wrong?  Is this some sort of endian problem?
+
+     514   0200         0231                SUBWF 0x1B1, W                515   0201         382A                IORLW 0x2A                    516   0202         0134                CLRW                          517   0203         3E34                ADDLW 0x34                    518   0204         3E14        isr     ADDLW 0x14                    519   0205         0231                SUBWF 0x1B1, W                520   0206         0001                RESET                         521   0207         3F08                MOVIW [8]FSR0
+
+
+
+I've written an SPI bootloader for the PIC16LF15355.  It seems to work fine but I can't figure out how to debug the loaded code.  I set the main project as the app, compile the app code for debugging without downloading it, and then use the bootloader to load it at 0x200.  I'm already confused at this point because the only hex file I can find is myapp.production.hex which is clearly not any debug version.
+
+When I use Launch Debugger Main Project the output window just shows a Target Reset.  At that point it appears to be paused showing the play button but clicking on Step Over doesn't show any code location.  After a few clicks the pause button appear and it seems to be running.  But pausing again shows no active line.  All my breakpoints appear as broken.  If I try to open a disassembly window I just get an empty editor window.
+
+What is the proper way of doing this?
