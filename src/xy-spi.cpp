@@ -11,9 +11,9 @@
 
 // add-on initial timing
 // add-on timing is slow until device id is known
-#define DEF_BIT_RATE  100000 // 100 kbs
-#define DEF_BYTE_DELAY    50
-#define DEF_WORD_DELAY   200
+#define DEF_BIT_RATE    800000 // (0.8 mbits)
+#define DEF_BYTE_DELAY      10
+#define DEF_WORD_DELAY     100
 
 // status rec
 char statusRec[STATUS_REC_LEN];
@@ -100,7 +100,7 @@ char word2mcu(char mcu, uint32_t word) {
 // send all zero word, spi idle
 // used to get status or just delay
 char zero2mcu(char mcu) {
-  return word2mcu(mcu, 0);
+  return byte2mcuWithSS(mcu, 0);
 }
 
 // send one byte immediate command, not per-axis

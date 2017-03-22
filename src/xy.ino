@@ -30,11 +30,13 @@ void setup() {
 
 	// SPIFFS.begin();
 	// initeeprom();
-  // ledInit();
-  setupServer();
-	find_and_connect();
+  ledInit();
+  // setupServer();
+	// find_and_connect();
   // setupWebsocket();
 	initSpi();
+
+	// while(1) delay(1000);
 
 	// // get status rec, just to see hex in console
 	// Serial.println("getting status rec");
@@ -57,12 +59,15 @@ void setup() {
 	// } else
   //   Serial.println("status rec non-zero status (hex): " + String(stat, HEX));
 
-	diagonalTest();
+	// diagonalTest();
+
+	// byte2mcuWithSS(1, Z_SET_CURL_CMD | 0x03);  // low two bits solenoid pwm
+	// byte2mcuWithSS(1, Z_SET_CURH_CMD | 0x3f);  // top six bits solenoid pwm
 }
 
 void loop() {
-	chkServer();
-	chkAjax();
-	chkUpdates();
+	// chkServer();
+	// chkAjax();
+	// chkUpdates();
 	chkCtrl();
 }

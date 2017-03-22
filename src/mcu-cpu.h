@@ -70,7 +70,8 @@ typedef long pos_t; // 32 bits signed
 
 // immediate command 32-bit words -- top 2 bits are zero
 // command codes enumerated here are in bottom nibble of first byte
-// commands 0, 1, and 2 must be supported as one byte in SS enable
+// commands 0-3 must be supported as one byte in SS enable
+// home cmd has axes to home in byte 4 - d1 is X and d0 is Y
 // set homing speeds have microstep index in byte 2 and speed param in 3-4
 // setMotorCurrent has param in bottom 5 bits
 // 4 bits
@@ -81,21 +82,16 @@ typedef enum Cmd {
   updateFlashCode      =  3, // set flash bytes as no-app flag and reboot
 
   // commands specific to one add-on start at 10
-  resetCmd             = 10, // clear state & hold reset pins on motors low
-  idleCmd              = 11, // abort any commands, clear vec buffers
-  homeCmd              = 12, // goes home and saves homing distance
-  moveCmd              = 13, // enough vectors need to be loaded to do this
-  setHomingSpeed       = 14, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed = 15, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      = 16, // set motorCurrent (0 to 31) immediately
-  setDirectionLevelXY  = 17  // set direction for each motor
+  idleCmd              = 10, // abort any commands, clear vec buffers
+  lockCmd              = 11, // set reset pins on motors to low
+  unlockCmd            = 12, // clear reset pins on motors to high
+  homeCmd              = 13, // goes home and saves homing distance
+  moveCmd              = 14, // enough vectors need to be loaded to do this
+  setHomingSpeed       = 15, // set homeUIdx & homeUsecPerPulse settings
+  setHomingBackupSpeed = 16, // set homeBkupUIdx & homeBkupUsecPerPulse settings
+  setMotorCurrent      = 17, // set motorCurrent (0 to 31) immediately
+  setDirectionLevels   = 18  // set direction for each motor
 } Cmd;
-
-/////////////////////////////////  Z COMMAND  /////////////////////////////////
-// top 2 bits of zero is normal command from above, statusCmd etc.
-
-#define Z_SET_CURL_CMD 0x80   // top == 0b10 sets Low  2 bits solenoid current
-#define Z_SET_CURH_CMD 0xc0   // top == 0b11 sets High 6 bits solenoid current
 
 
 /////////////////////////////////  Vectors  ///////////////////////////
