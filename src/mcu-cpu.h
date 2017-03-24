@@ -93,6 +93,12 @@ typedef enum Cmd {
   setDirectionLevels   = 18  // set direction for each motor
 } Cmd;
 
+/////////////////////////////////  Z COMMAND  /////////////////////////////////
+// top 2 bits of zero is normal command from above, statusCmd etc.
+
+#define Z_SET_CURL_CMD 0x80   // top == 0b10 sets Low  2 bits solenoid current
+#define Z_SET_CURH_CMD 0xc0   // top == 0b11 sets High 6 bits solenoid current
+
 
 /////////////////////////////////  Vectors  ///////////////////////////
 
@@ -198,7 +204,7 @@ typedef union StatusRecU {
 typedef enum Error {
   // these must be supported by all add-ons
   errorMcuFlashing =    2,
-  errorNoResponse  = 0x3f, // miso automatically returns 0xff when no mcu
+  errorReset       =    4,
 
   // errors specific to add-on start at 10
   errorFault             = 10, // driver chip fault
@@ -212,7 +218,9 @@ typedef enum Error {
   errorSpiByteOverrun    = 50,
   errorSpiBytesOverrun   = 52,
   errorSpiOvflw          = 54,
-  errorSpiWcol           = 56
+  errorSpiWcol           = 56,
+
+  errorNoResponse  = 0x3f // miso pull-up returns 0xff when no mcu
 } Error;
 
 #define spiCommError(byte) ((byte >= (0xc0 | errorSpiByteSync)))

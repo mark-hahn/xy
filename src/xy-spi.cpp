@@ -7,7 +7,7 @@
 // MCU 0 timing
 #define MCU0_BIT_RATE  4000000 // bit rate (4 mbits)
 #define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
-#define MCU0_WORD_DELAY    100 // usecs between 32-bit words (too short causes err 18)
+#define MCU0_WORD_DELAY    100 // usecs between words (too short causes errorSpiByteOverrun)
 
 // add-on initial timing
 // add-on timing is slow until device id is known

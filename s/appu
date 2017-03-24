@@ -3,4 +3,4 @@ set -e
 
 s/appb
 
-curl http://192.168.1.242/update-fs
+curl http://192.168.1.249/update-fs

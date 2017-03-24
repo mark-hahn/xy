@@ -1,2 +1,2 @@
 
-curl http://192.168.1.242/update-mcu?mcu=0
+curl http://192.168.1.249/update-mcu?mcu=0

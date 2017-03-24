@@ -4,6 +4,8 @@
 
 void printHex8(char byte);
 void diagonalTest();
+void ZTest();
+
 void chkCtrl();
 
 #endif
