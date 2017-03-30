@@ -3,6 +3,7 @@
 #include <SPI.h>
 #include "xy-spi.h"
 #include "mcu-cpu.h"
+#include "xy-control.h"
 
 // MCU 0 timing
 #define MCU0_BIT_RATE  4000000 // bit rate (4 mbits)
@@ -152,7 +153,7 @@ uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
 // array of signed acceleration to pps (9x3 -> 2x8)
 // dir and ustep are same as last vector
 uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
-  int8_t b[9];
+  uint8_t b[4];
   switch(count) {
     case 2: b[0] = 0xff; b[1] = 0xfc | axis;            // 2x8
        b[2] = a[0]; b[3] = a[1];
@@ -177,7 +178,7 @@ uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
        b[2] = (a[2] << 4) | (a[3] & 0x0f);
        b[3] = (a[4] << 4) | (a[5] & 0x0f);
        break;                                      // 7x4
-    case 7: b[0] = 0xc0   | (axis << 3)     | ((a[0] << 4) & 0x0f);
+    case 7: b[0] = 0xc0   | (axis << 4)     | (a[0] & 0x0f);
        b[1] = (a[1] << 4) | (a[2] & 0x0f);
        b[2] = (a[3] << 4) | (a[4] & 0x0f);
        b[3] = (a[5] << 4) | (a[6] & 0x0f);
@@ -187,22 +188,25 @@ uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
        b[1] = (a[0] << 5)         | ((a[1] << 2) & 0x1c) |
              ((a[2] >> 1) & 0x03);
        b[2] = (a[2] << 7)         | ((a[3] << 4) & 0x70) |
-             ((a[4] << 1) & 0xe0) | ((a[5] >> 2) & 0x01);
+             ((a[4] << 1) & 0x0e) | ((a[5] >> 2) & 0x01);
        b[3] = (a[5] << 6)         | ((a[6] << 3) & 0x38) |
-              (a[7] & 0x03);
+              (a[7] & 0x07);
        break;
                                                   // 9x3
-    case 9: b[0] = 0xe0                | (axis << 3) | (a[0] & 07);
+    case 9: b[0] = 0xe0           | (axis << 3) | (a[0] & 07);
        b[1] = (a[1] << 5)         | ((a[2] << 2) & 0x1c) |
              ((a[3] >> 1) & 0x03);
        b[2] = (a[3] << 7)         | ((a[4] << 4) & 0x70) |
-             ((a[5] << 1) & 0xe0) | ((a[6] >> 2) & 0x01);
+             ((a[5] << 1) & 0x0e) | ((a[6] >> 2) & 0x01);
        b[3] = (a[6] << 6)         | ((a[7] << 3) & 0x38) |
-              (a[8] & 0x03);
+              (a[8] & 0x07);
        break;
   }
-  Serial.println( String(b[0], HEX) + " " + String(b[1], HEX) + " " +
-                  String(b[2], HEX) + " " + String(b[3], HEX) );
+  Serial.print(count); Serial.print(": ");
+  printHex8(b[0]); Serial.print(" ");
+  printHex8(b[1]); Serial.print(" ");
+  printHex8(b[2]); Serial.print(" ");
+  printHex8(b[3]); Serial.println();
   return 0; // bytes2mcu(mcu, bytes);
 }
 
