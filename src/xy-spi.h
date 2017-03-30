@@ -13,16 +13,10 @@ extern uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 void initSpi();
 uint8_t byte2mcu(uint8_t mcu, uint8_t byte);
 uint8_t word2mcu(uint8_t mcu, uint32_t word);
+uint8_t ints2mcu(uint8_t mcu, uint16_t int1, uint16_t int2);
 uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes);
 uint8_t zero2mcu(uint8_t mcu);
 uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd);
-uint8_t move2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
-              uint16_t pps, uint16_t pulseCount);
-uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
-               int8_t accel, uint16_t pulseCount);
-uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a);
-uint8_t delay2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs);
-uint8_t eof2mcu(uint8_t mcu, uint8_t axis);
 
 uint8_t getMcuState(uint8_t mcu);
 uint8_t getMcuStatusRec(uint8_t mcu);
