@@ -7,24 +7,27 @@
 #define STATUS_REC_LEN 30
 #define STATUS_REC_BUF_LEN ((STATUS_REC_LEN * 4) / 3)
 
-extern char statusRec[STATUS_REC_LEN];
-extern char statusRecInBuf[STATUS_REC_BUF_LEN];
+extern uint8_t statusRec[STATUS_REC_LEN];
+extern uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 
 void initSpi();
-char byte2mcuWithSS(char mcu, char byte);
-char word2mcu(char mcu, uint32_t word);
-char bytes2mcu(char mcu, char *bytes);
-char zero2mcu(char mcu);
-char cmd2mcu(char mcu, char cmd);
-char vec2mcu(char mcu, char axis, char dir, char ustep,
-             uint16_t usecsPerPulse, uint16_t pulseCount);
-char delay2mcu(char mcu, char axis, uint16_t delayUsecs);
-char eof2mcu(char mcu, char axis);
+uint8_t byte2mcu(uint8_t mcu, uint8_t byte);
+uint8_t word2mcu(uint8_t mcu, uint32_t word);
+uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes);
+uint8_t zero2mcu(uint8_t mcu);
+uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd);
+uint8_t move2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
+              uint16_t pps, uint16_t pulseCount);
+uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
+               int8_t accel, uint16_t pulseCount);
+uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a);
+uint8_t delay2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs);
+uint8_t eof2mcu(uint8_t mcu, uint8_t axis);
 
-char getMcuState(char mcu);
-char getMcuStatusRec(char mcu);
+uint8_t getMcuState(uint8_t mcu);
+uint8_t getMcuStatusRec(uint8_t mcu);
 
-void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len);
-void endFlashMcuBytes(char mcu);
+void flashMcuBytes(uint8_t mcu, unsigned int addr, char *buf, int len);
+void endFlashMcuBytes(uint8_t mcu);
 
 #endif

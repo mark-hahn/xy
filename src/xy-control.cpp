@@ -6,7 +6,7 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 
-void printHex8(char byte) {
+void printHex8(uint8_t byte) {
 	String byteStr = String((int) byte, HEX);
 	if(byteStr.length() < 2) byteStr = "0" + byteStr;
 	Serial.print(byteStr);
@@ -21,16 +21,15 @@ void printHex8(char byte) {
 //   Serial.println();
 // }
 
+uint8_t status[2] = {0,0};
+uint8_t errorCode[2] = {0,0};
+uint8_t errorAxis[2] = {0,0};
+uint8_t lastStatus[2] = {0,0};
+uint8_t lastErrorCode[2] = {0,0};
 
-char status[2] = {0,0};
-char errorCode[2] = {0,0};
-char errorAxis[2] = {0,0};
-char lastStatus[2] = {0,0};
-char lastErrorCode[2] = {0,0};
+uint8_t skipErrors = 0; // for debug only
 
-char skipErrors = 0; // for debug only
-
-void chkStatus(int mcu, char statusIn) {
+void chkStatus(int mcu, uint8_t statusIn) {
 	if((statusIn & RET_TYPE_MASK) == typeError) {
 		errorCode[mcu] = (statusIn & 0x3f);
 	}
@@ -68,7 +67,7 @@ void chkStatus(int mcu, char statusIn) {
 	if(errorCode[mcu]) {
 		if(skipErrors == 0) {
 		  zero2mcu(mcu);
-			byte2mcuWithSS(mcu, clearErrorCmd);
+			byte2mcu(mcu, clearErrorCmd);
 		  zero2mcu(mcu);
 		}
 		else skipErrors--;
@@ -95,142 +94,142 @@ void chkCtrl(){
 		Serial.print("pwr: "); Serial.println(lastPwr, DEC);
 	}
 
-  char statusIn = zero2mcu(0);
+  uint8_t statusIn = zero2mcu(0);
   if(statusIn) chkStatus(0, statusIn);
 
-  statusIn = zero2mcu(1);
-  if(statusIn) chkStatus(1, statusIn);
-
-  if (runningDiagonalTest) chkDiagonalTest();
-	if (runningZTest) chkZTest();
+  // statusIn = zero2mcu(1);
+  // if(statusIn) chkStatus(1, statusIn);
+	//
+  // if (runningDiagonalTest) chkDiagonalTest();
+	// if (runningZTest) chkZTest();
 }
 
-
-/////////////////// tests  ////////////////////
-char state[2] = {0,0};
-
-void diagonalTest() {
-	if(runningZTest) return;
-	state[0] = 0;
-  runningDiagonalTest = TRUE;
-}
-
-void chkDiagonalTest() {
-  char statusIn = zero2mcu(0);
-  if(statusIn) chkStatus(0,statusIn);
-
-  if (errorCode) {
-    state[0] = 0;
-    return;
-  }
-  if(pwrSw == 0) state[0] = 0;
-
-  switch (state[0]) {
-    case 0:
-      if(pwrSw == 1) {
-        // power switch just switched on
-				delay(100);  // wait 100 ms for mcu and motor drivers to wake up
-        byte2mcuWithSS(0, clearErrorCmd);
-        byte2mcuWithSS(0, idleCmd);
-        byte2mcuWithSS(0, homeCmd);
-        state[0] = 10;
-      }
-      break;
-
-    case 10:
-			if(status[0] == statusLocked) {
-				char stat;
-				// get status rec, just to see hex in console
-				do {
-					stat = getMcuStatusRec(0);
-					if(stat == 254) {
-						Serial.println("status rec too long");
-						break;
-					}
-					if((stat & RET_TYPE_MASK) == typeError) return;
-				} while (stat != 0);
-
-			  for(char i = 0; i < STATUS_REC_LEN; i++) {
-			    printHex8(statusRecInBuf[i]); Serial.print(" ");
-				}
-			  Serial.println();
-
-				digitalWrite(PWRLED, 1);
-
-        //
-        // void vec2mcu(char mcu, char axis, char dir, char ustep,
-        //              uint16_t usecsPerPulse, uint16_t pulseCount) {
-        vec2mcu(0, X, FORWARD, 2, 1000, 920);      // 45 mm, max 1023 pulses each vec
-        eof2mcu(0, X);
-        Serial.println("Sent fwd vector");
-
-				delay(7000);
-        byte2mcuWithSS(0, moveCmd);
-        Serial.println("Sent move cmd");
-        state[0] = 20;
-				digitalWrite(PWRLED, 0);
-      }
-      break;
-
-    case 20:
-      if(status[0] == statusMoved) {
-				digitalWrite(PWRLED, 1);
-				byte2mcuWithSS(0, idleCmd);
-        Serial.println("Sent idle cmd");
-
-        //
-        // void vec2mcu(char mcu, char axis, char dir, char ustep,
-        //              uint16_t usecsPerPulse, uint16_t pulseCount) {
-        vec2mcu(0, X, BACKWARDS, 2, 1000, 920);     // 45 mm, max 1023 pulses each vec
-        eof2mcu(0, X);
-        Serial.println("Sent back vector");
-
-				delay(7000);
-        byte2mcuWithSS(0, moveCmd);
-        Serial.println("Sent move cmd");
-        state[0] = 30;
-				digitalWrite(PWRLED, 0);
-      }
-      break;
-
-    case 30:
-      if(status[0] == statusMoved) {
-				byte2mcuWithSS(0, idleCmd);
-				state[0] = 10;
-			}
-			break;
-	}
-}
-
-
-///////////////////////// Z TEST /////////////////////////
-void ZTest() {
-	if(runningDiagonalTest) return;
-	state[1] = 0;
-  runningZTest = TRUE;
-}
-
-void chkZTest(){
-  char statusIn = zero2mcu(1);
-  if(statusIn) chkStatus(1,statusIn);
-
-  // if (errorCode[1]) {
-  //   state[1] = 0;
-  //   return;
-  // }
-  if(pwrSw == 0) state[1] = 0;
-
-  switch (state[1]) {
-    case 0:
-      if(pwrSw == 1) {
-				Serial.println("power switch just switched on");
-        // power switch just switched on
-        // byte2mcuWithSS(1, clearErrorCmd);
-        // byte2mcuWithSS(1, idleCmd);
-        byte2mcuWithSS(1, homeCmd);
-				Serial.println("sent home cmd to Z");
-        state[1] = 10;
-      }
-      break;
-	}
-}
+//
+// /////////////////// tests  ////////////////////
+// uint8_t state[2] = {0,0};
+//
+// void diagonalTest() {
+// 	if(runningZTest) return;
+// 	state[0] = 0;
+//   runningDiagonalTest = TRUE;
+// }
+//
+// void chkDiagonalTest() {
+//   uint8_t statusIn = zero2mcu(0);
+//   if(statusIn) chkStatus(0,statusIn);
+//
+//   if (errorCode) {
+//     state[0] = 0;
+//     return;
+//   }
+//   if(pwrSw == 0) state[0] = 0;
+//
+//   switch (state[0]) {
+//     case 0:
+//       if(pwrSw == 1) {
+//         // power switch just switched on
+// 				delay(100);  // wait 100 ms for mcu and motor drivers to wake up
+//         byte2mcu(0, clearErrorCmd);
+//         byte2mcu(0, idleCmd);
+//         byte2mcu(0, homeCmd);
+//         state[0] = 10;
+//       }
+//       break;
+//
+//     case 10:
+// 			if(status[0] == statusLocked) {
+// 				uint8_t stat;
+// 				// get status rec, just to see hex in console
+// 				do {
+// 					stat = getMcuStatusRec(0);
+// 					if(stat == 254) {
+// 						Serial.println("status rec too long");
+// 						break;
+// 					}
+// 					if((stat & RET_TYPE_MASK) == typeError) return;
+// 				} while (stat != 0);
+//
+// 			  for(uint8_t i = 0; i < STATUS_REC_LEN; i++) {
+// 			    printHex8(statusRecInBuf[i]); Serial.print(" ");
+// 				}
+// 			  Serial.println();
+//
+// 				digitalWrite(PWRLED, 1);
+//
+//         //
+//         // void vec2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
+//         //              uint16_t usecsPerPulse, uint16_t pulseCount) {
+//         vec2mcu(0, X, FORWARD, 2, 1000, 920);      // 45 mm, max 1023 pulses each vec
+//         eof2mcu(0, X);
+//         Serial.println("Sent fwd vector");
+//
+// 				delay(7000);
+//         byte2mcu(0, moveCmd);
+//         Serial.println("Sent move cmd");
+//         state[0] = 20;
+// 				digitalWrite(PWRLED, 0);
+//       }
+//       break;
+//
+//     case 20:
+//       if(status[0] == statusMoved) {
+// 				digitalWrite(PWRLED, 1);
+// 				byte2mcu(0, idleCmd);
+//         Serial.println("Sent idle cmd");
+//
+//         //
+//         // void vec2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
+//         //              uint16_t usecsPerPulse, uint16_t pulseCount) {
+//         vec2mcu(0, X, BACKWARDS, 2, 1000, 920);     // 45 mm, max 1023 pulses each vec
+//         eof2mcu(0, X);
+//         Serial.println("Sent back vector");
+//
+// 				delay(7000);
+//         byte2mcu(0, moveCmd);
+//         Serial.println("Sent move cmd");
+//         state[0] = 30;
+// 				digitalWrite(PWRLED, 0);
+//       }
+//       break;
+//
+//     case 30:
+//       if(status[0] == statusMoved) {
+// 				byte2mcu(0, idleCmd);
+// 				state[0] = 10;
+// 			}
+// 			break;
+// 	}
+// }
+//
+//
+// ///////////////////////// Z TEST /////////////////////////
+// void ZTest() {
+// 	if(runningDiagonalTest) return;
+// 	state[1] = 0;
+//   runningZTest = TRUE;
+// }
+//
+// void chkZTest(){
+//   uint8_t statusIn = zero2mcu(1);
+//   if(statusIn) chkStatus(1,statusIn);
+//
+//   // if (errorCode[1]) {
+//   //   state[1] = 0;
+//   //   return;
+//   // }
+//   if(pwrSw == 0) state[1] = 0;
+//
+//   switch (state[1]) {
+//     case 0:
+//       if(pwrSw == 1) {
+// 				Serial.println("power switch just switched on");
+//         // power switch just switched on
+//         // byte2mcu(1, clearErrorCmd);
+//         // byte2mcu(1, idleCmd);
+//         byte2mcu(1, homeCmd);
+// 				Serial.println("sent home cmd to Z");
+//         state[1] = 10;
+//       }
+//       break;
+// 	}
+// }

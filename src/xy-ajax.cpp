@@ -33,25 +33,25 @@ char hexDigit2int(char hex) {
   if(hex <= 'f') return hex-'a'+10;
   return 0;
 }
-char hexByte2int(const char *hex, char idx) {
+uint8_t hexByte2int(const char *hex, uint8_t idx) {
   return (hexDigit2int(hex[idx]) << 4) | hexDigit2int(hex[idx+1]);
 }
 
 unsigned int upperBytesAddr = 0;
 
-void ajaxFlashHexLine(char mcu, const char *line) {
+void ajaxFlashHexLine(uint8_t mcu, const char *line) {
   // Serial.println(String("ajaxFlashHexLine: ") + line);
   if(line[0] != ':') return;
   char buf[65];
-  char i, len = hexByte2int(line, 1);
+  uint8_t i, len = hexByte2int(line, 1);
   if (len > 64) return;
-  char addrH = hexByte2int(line, 3);
-  char addrL = hexByte2int(line, 5);
+  uint8_t addrH = hexByte2int(line, 3);
+  uint8_t addrL = hexByte2int(line, 5);
   unsigned int addr = (addrH << 8) | addrL;
-  char type = hexByte2int(line, 7);
-  char cksum = len + addrH + addrL + type;
+  uint8_t type = hexByte2int(line, 7);
+  uint8_t cksum = len + addrH + addrL + type;
   for (i=0; i <= len; i++) {
-    char byte = hexByte2int(line, 9+i*2);
+    uint8_t byte = hexByte2int(line, 9+i*2);
     buf[i] = byte; // extra cksum byte is after len bytes
     cksum += byte;
   }

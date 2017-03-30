@@ -16,11 +16,11 @@
 #define DEF_WORD_DELAY     100
 
 // status rec
-char statusRec[STATUS_REC_LEN];
-char statusRecInBuf[STATUS_REC_BUF_LEN];
+uint8_t statusRec[STATUS_REC_LEN];
+uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 
 #define SCK 14
-char ssPinByMcu[3] = {15, 16, 0};
+uint8_t ssPinByMcu[3] = {15, 16, 0};
 
 int32    speedByMcu[3]     = {MCU0_BIT_RATE,   DEF_BIT_RATE,   DEF_BIT_RATE  };
 uint16_t byteDelayByMcu[3] = {MCU0_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY};
@@ -32,22 +32,22 @@ void initSpi() {
 	SPI.setHwCs(false);  // our code will drive SS, not library
 
   // start all three MCU SS high
-  for (char mcu=0; mcu < 3; mcu++) {
+  for (uint8_t mcu=0; mcu < 3; mcu++) {
     pinMode(ssPinByMcu[mcu], OUTPUT);
     digitalWrite(ssPinByMcu[mcu],1);
   }
 }
 
-char byte2mcu(char mcu, char byte) {
+uint8_t trans2mcu(uint8_t mcu, uint8_t byte) {
   SPI.beginTransaction(SPISettings(speedByMcu[mcu], MSBFIRST, SPI_MODE0));
-  char byteBack = SPI.transfer(byte);
+  uint8_t byteBack = SPI.transfer(byte);
   SPI.endTransaction();
   return byteBack;
 }
 
-char byte2mcuWithSS(char mcu, char byte) {
+uint8_t byte2mcu(uint8_t mcu, uint8_t byte) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  char byteBack = byte2mcu(mcu, byte);
+  uint8_t byteBack = trans2mcu(mcu, byte);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   return byteBack;
@@ -55,36 +55,36 @@ char byte2mcuWithSS(char mcu, char byte) {
 
 // array is little-endian (unusual)
 // spi is big-endian
-char bytes2mcu(char mcu, char *bytes) {
+uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  char status = byte2mcu(bytes[3], mcu);
+  uint8_t status = trans2mcu(bytes[3], mcu);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(bytes[2], mcu);
+	trans2mcu(bytes[2], mcu);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(bytes[1], mcu);
+	trans2mcu(bytes[1], mcu);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(bytes[0], mcu);
+	trans2mcu(bytes[0], mcu);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
 }
 
 /// endian flip is needed in each int
-char ints2mcu(char mcu, uint16_t int1, uint16_t int2) {
+uint8_t ints2mcu(uint8_t mcu, uint16_t int1, uint16_t int2) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  char status = byte2mcu(mcu, ((char *) &int1)[1]);
+  uint8_t status = trans2mcu(mcu, ((uint8_t *) &int1)[1]);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(mcu, ((char *) &int1)[0]);
+	trans2mcu(mcu, ((uint8_t *) &int1)[0]);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
-  byte2mcu(mcu, ((char *) &int2)[1]);
+  trans2mcu(mcu, ((uint8_t *) &int2)[1]);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(mcu, ((char *) &int2)[0]);
+	trans2mcu(mcu, ((uint8_t *) &int2)[0]);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
   digitalWrite(ssPinByMcu[mcu],1);
@@ -93,29 +93,29 @@ char ints2mcu(char mcu, uint16_t int1, uint16_t int2) {
 }
 
 // word and array are both little-endian
-char word2mcu(char mcu, uint32_t word) {
-  return bytes2mcu(mcu, (char *) &word);
+uint8_t word2mcu(uint8_t mcu, uint32_t word) {
+  return bytes2mcu(mcu, (uint8_t *) &word);
 }
 
 // send all zero word, spi idle
 // used to get status or just delay
-char zero2mcu(char mcu) {
-  return byte2mcuWithSS(mcu, 0);
+uint8_t zero2mcu(uint8_t mcu) {
+  return byte2mcu(mcu, 0);
 }
 
 // send one byte immediate command, not per-axis
-char cmd2mcu(char mcu, char cmd) {
+uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  char status = byte2mcu(mcu, cmd);
+  uint8_t status = trans2mcu(mcu, cmd);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	byte2mcu(mcu, 0);
+	trans2mcu(mcu, 0);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
-  byte2mcu(mcu, 0);
+  trans2mcu(mcu, 0);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-  byte2mcu(mcu, 0);
+  trans2mcu(mcu, 0);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
   digitalWrite(ssPinByMcu[mcu],1);
@@ -124,34 +124,108 @@ char cmd2mcu(char mcu, char cmd) {
 }
 
 // absolute vector for straight line
-// max 65.536 ms per pulse (65536 usec) and max 1023 pulses
-// add another vec2mcu for more pulses
+// max 65.536 ms per pulse (65536 usec) and max 4096 pulses
+// add another move2mcu for more pulses
 // add delay2mcu for longer usecs/single-pulse
-char vec2mcu(char mcu, char axis, char dir, char ustep,
-             uint16_t usecsPerPulse, uint16_t pulseCount) {
-  // Serial.print(  String( (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount, HEX) );
-  // Serial.println(String(usecsPerPulse, HEX));
-  return ints2mcu(mcu,
-                 (axis ? 0x4000 : 0x8000) | (dir << 13) | (ustep << 10) | pulseCount,
-                 usecsPerPulse);
+uint8_t move2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
+              uint16_t pps, uint16_t pulseCount) {
+  uint8_t bytes[4] = {
+    (uint8_t)  (0x80 | (axis << 4) | (dir << 3) | ustep),
+    (uint8_t)  (pps >> 4),
+    (uint8_t)(((pps << 4) & 0xf0) | (pulseCount >> 8)),
+    (uint8_t)  (pulseCount & 0xff) };
+  return bytes2mcu(mcu, bytes);
+}
+
+// signed acceleration vector
+// acceleration is 8-bit signed change to pps
+// add another accel2mcu for more pulses
+uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
+               int8_t accel, uint16_t pulseCount) {
+  uint8_t bytes[4] = { 0xfe,
+    (uint8_t) ((axis << 7) | (ustep << 6) | (accel >> 4)),
+    (uint8_t) ((accel << 4) | (pulseCount >> 4)),
+    (uint8_t) (pulseCount & 0xff) };
+  return bytes2mcu(mcu, bytes);
+}
+
+// array of signed acceleration to pps (9x3 -> 2x8)
+// dir and ustep are same as last vector
+uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
+  int8_t b[9];
+  switch(count) {
+    case 2: b[0] = 0xff; b[1] = 0xfc | axis;            // 2x8
+       b[2] = a[0]; b[3] = a[1];
+       break;
+    case 3: b[0] = 0xff;                                // 3*7
+       b[1] = (0x80 + (axis << 5)) | ((a[0] >> 2) & 0x1f);
+       b[2] = (a[0] << 6)          | ((a[1] >> 1) & 0x3f);
+       b[3] = (a[1] << 7)          |  (a[2] & 0x7f);
+       break;
+    case 4: b[0] = 0xff;                                // 4*5
+       b[1] = 0xc0                 |  (axis << 4)         | ((a[0] >> 1) & 0x0f);
+       b[2] =  (a[0] << 7)         | ((a[1] << 2) & 0x7c) | ((a[2] >> 3) & 0x03);
+       b[3] =  (a[2] << 5)         |  (a[3] & 0x1f);
+       break;                                      // 5x5
+    case 5: b[0] = 0xf0                 | (axis << 1)          | ((a[0] >> 4) & 0x01);
+       b[1] = (a[0] << 4)          | ((a[1] >> 1) & 0x0f);
+       b[2] = (a[1] << 7)          | ((a[2] << 2) & 0x7c) | ((a[3] >> 3) & 0x03);
+       b[3] = (a[3] << 5)          | (a[4] & 0x1f);
+       break;
+    case 6: b[0] = 0xf8   | axis;                   // 6x4
+       b[1] = (a[0] << 4) | (a[1] & 0x0f);
+       b[2] = (a[2] << 4) | (a[3] & 0x0f);
+       b[3] = (a[4] << 4) | (a[5] & 0x0f);
+       break;                                      // 7x4
+    case 7: b[0] = 0xc0   | (axis << 3)     | ((a[0] << 4) & 0x0f);
+       b[1] = (a[1] << 4) | (a[2] & 0x0f);
+       b[2] = (a[3] << 4) | (a[4] & 0x0f);
+       b[3] = (a[5] << 4) | (a[6] & 0x0f);
+       break;
+
+    case 8: b[0] = 0xfc           | axis;           // 8x3
+       b[1] = (a[0] << 5)         | ((a[1] << 2) & 0x1c) |
+             ((a[2] >> 1) & 0x03);
+       b[2] = (a[2] << 7)         | ((a[3] << 4) & 0x70) |
+             ((a[4] << 1) & 0xe0) | ((a[5] >> 2) & 0x01);
+       b[3] = (a[5] << 6)         | ((a[6] << 3) & 0x38) |
+              (a[7] & 0x03);
+       break;
+                                                  // 9x3
+    case 9: b[0] = 0xe0                | (axis << 3) | (a[0] & 07);
+       b[1] = (a[1] << 5)         | ((a[2] << 2) & 0x1c) |
+             ((a[3] >> 1) & 0x03);
+       b[2] = (a[3] << 7)         | ((a[4] << 4) & 0x70) |
+             ((a[5] << 1) & 0xe0) | ((a[6] >> 2) & 0x01);
+       b[3] = (a[6] << 6)         | ((a[7] << 3) & 0x38) |
+              (a[8] & 0x03);
+       break;
+  }
+  Serial.println( String(b[0], HEX) + " " + String(b[1], HEX) + " " +
+                  String(b[2], HEX) + " " + String(b[3], HEX) );
+  return 0; // bytes2mcu(mcu, bytes);
 }
 
 // outputs no pulse, just delay
-// max 65.536 ms (65536 usec)
-char delay2mcu(char mcu, char axis, uint16_t delayUsecs) {
-  return vec2mcu(mcu, axis, 0, 0, delayUsecs, 0);
+// max 65.535 ms
+uint8_t delay2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs) {
+  uint8_t topNibble = (delayUsecs >> 12);
+  return move2mcu(mcu, axis,
+    (topNibble >> 3),
+    (topNibble & 0x07),
+    (delayUsecs & 0x0fff), 0);
 }
 
 // last vector in move, change mcu state from moving to locked
-char eof2mcu(char mcu, char axis) {
-  return vec2mcu(mcu, axis, 0, 0, 1, 0);
+uint8_t eof2mcu(uint8_t mcu, uint8_t axis) {
+  return word2mcu(mcu, (0xffffffcf | (axis << 4)));
 }
 
-char getMcuState(char mcu) {
-  char mcu_state;
+uint8_t getMcuState(uint8_t mcu) {
+  uint8_t mcu_state;
   do {
   	digitalWrite(ssPinByMcu[mcu], 0);
-    mcu_state = byte2mcu(mcu, nopCmd);
+    mcu_state = trans2mcu(mcu, nopCmd);
   	digitalWrite(ssPinByMcu[mcu], 1);
     delayMicroseconds(wordDelayByMcu[mcu]);
     if(mcu_state == 0) delay(1);
@@ -160,11 +234,11 @@ char getMcuState(char mcu) {
 }
 
 // unpack statusRecInBuf into statusRec
-void unpackRec(char recLen) {
-	char statusRecIdx = 0;
-	char curByte;
+void unpackRec(uint8_t recLen) {
+	uint8_t statusRecIdx = 0;
+	uint8_t curByte;
   for(int i=0; i < recLen; i++) {
-		char sixBits = statusRecInBuf[i];
+		uint8_t sixBits = statusRecInBuf[i];
 		switch(i % 4) {
 			case 0:
 			  curByte = (sixBits << 2);
@@ -194,15 +268,15 @@ void unpackRec(char recLen) {
 // if found then zero is returned;
 // if rec longer than buffer, 254 is returned
 // 255 returned on missing mcu
-char getMcuStatusRec(char mcu) {
-  char byteIn;
-  char recLen = 255, recLen1;
-  char statusRecInIdx = 0;
+uint8_t getMcuStatusRec(uint8_t mcu) {
+  uint8_t byteIn;
+  uint8_t recLen = 255, recLen1;
+  uint8_t statusRecInIdx = 0;
   bool_t foundStateByte = FALSE;
-  char nonTypeCount = 0;
+  uint8_t nonTypeCount = 0;
 
   // request status rec
-  byte2mcuWithSS(mcu, statusCmd);
+  byte2mcu(mcu, statusCmd);
 
   // scan for data byte skipping state bytes
   while(1){
@@ -223,7 +297,7 @@ char getMcuStatusRec(char mcu) {
   while(1) {
     if((byteIn & 0xc0) == typeData &&
          statusRecInIdx < STATUS_REC_BUF_LEN) {
-      char statusData = (byteIn & 0x3f);
+      uint8_t statusData = (byteIn & 0x3f);
       statusRecInBuf[statusRecInIdx++] = statusData;
 
       // first byte is rec len
@@ -244,7 +318,7 @@ char getMcuStatusRec(char mcu) {
       else
         return byteIn; // status rec aborted
     }
-    byteIn = byte2mcuWithSS(mcu, nopCmd);
+    byteIn = byte2mcu(mcu, nopCmd);
     // data bytes must be sequential
     if(!byteIn) return getMcuState(mcu);
   }
@@ -258,18 +332,18 @@ char getMcuStatusRec(char mcu) {
 #define RESET_CMD  0x30  // cmd byte only, reset processor, issue when finished
 #define MAX_BYTES_IN_BLOCK 64  // always writes this size
 
-char flashBuf[MAX_BYTES_IN_BLOCK];
+uint8_t flashBuf[MAX_BYTES_IN_BLOCK];
 bool_t flashBufDirty = FALSE;
 unsigned int lastBlkAddr = 0xffff;
 
-void flashBlk(char mcu, unsigned int blkAddr) {
+void flashBlk(uint8_t mcu, unsigned int blkAddr) {
   // erase block
   digitalWrite(ssPinByMcu[mcu],0);
-  byte2mcu(mcu, ERASE_CMD);
+  trans2mcu(mcu, ERASE_CMD);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, blkAddr >> 8);
+  trans2mcu(mcu, blkAddr >> 8);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, blkAddr & 0xff);
+  trans2mcu(mcu, blkAddr & 0xff);
   delayMicroseconds(byteDelayByMcu[mcu]);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
@@ -279,14 +353,14 @@ void flashBlk(char mcu, unsigned int blkAddr) {
 
   // write block
   digitalWrite(ssPinByMcu[mcu],0);
-  byte2mcu(mcu, WRITE_CMD);
+  trans2mcu(mcu, WRITE_CMD);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, blkAddr >> 8);
+  trans2mcu(mcu, blkAddr >> 8);
   delayMicroseconds(byteDelayByMcu[mcu]);
-  byte2mcu(mcu, blkAddr & 0xff);
-  for(char i=0; i < MAX_BYTES_IN_BLOCK; i++) {
+  trans2mcu(mcu, blkAddr & 0xff);
+  for(uint8_t i=0; i < MAX_BYTES_IN_BLOCK; i++) {
     delayMicroseconds(byteDelayByMcu[mcu]);
-    byte2mcu(mcu, flashBuf[i]);
+    trans2mcu(mcu, flashBuf[i]);
   }
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
@@ -298,13 +372,13 @@ void flashBlk(char mcu, unsigned int blkAddr) {
   flashBufDirty = FALSE;
 }
 
-void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
+void flashMcuBytes(uint8_t mcu, unsigned int addr, char *buf, int len){
   if(lastBlkAddr == 0xffff) {
     Serial.println("erasing block to start boot loader, updateFlashCodecmd");
     // start boot loader in mcu
-    char status = byte2mcuWithSS(mcu, updateFlashCode);
+    uint8_t status = byte2mcu(mcu, updateFlashCode);
     delay(1000);
-    char stat = getMcuState(mcu); // ignore first response
+    uint8_t stat = getMcuState(mcu); // ignore first response
     Serial.println(String("first resp after updateFlashCodecmd: ") + String(stat, HEX));
     while(getMcuState(mcu) != 7);
     Serial.println("have 7");
@@ -323,14 +397,14 @@ void flashMcuBytes(char mcu, unsigned int addr, char *buf, int len){
   lastBlkAddr = blkAddr;
 }
 
-void endFlashMcuBytes(char mcu) {
+void endFlashMcuBytes(uint8_t mcu) {
   if(flashBufDirty) flashBlk(mcu, lastBlkAddr);
 
   // make sure mcu is ready and flashing
   while(getMcuState(mcu) != statusFlashing);
   // reset mcu
   digitalWrite(ssPinByMcu[mcu],0);
-  byte2mcu(mcu, RESET_CMD);
+  trans2mcu(mcu, RESET_CMD);
   digitalWrite(ssPinByMcu[mcu],1);
   // no response since mcu is rebooting
   Serial.println("mcu reset");

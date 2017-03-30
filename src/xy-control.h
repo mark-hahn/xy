@@ -2,7 +2,7 @@
 #ifndef CTRL_H
 #define CTRL_H
 
-void printHex8(char byte);
+void printHex8(uint8_t byte);
 void diagonalTest();
 void ZTest();
 

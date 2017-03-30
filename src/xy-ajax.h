@@ -16,7 +16,7 @@ void responseOK(AsyncWebServerRequest *request);
 void do_ssids(AsyncWebServerRequest *request);
 void do_eepromssids(AsyncWebServerRequest *request);
 void eepromssidPost();
-void ajaxFlashHexLine(char mcu, const char *line);
+void ajaxFlashHexLine(uint8_t mcu, const char *line);
 void ajaxResetMcu();
 void chkAjax();
 

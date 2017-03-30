@@ -33,7 +33,7 @@ void setup() {
   setupWebsocket();
 	initSpi();
 
-	ZTest();
+	// ZTest();
 }
 
 void loop() {

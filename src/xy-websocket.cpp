@@ -30,7 +30,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       } else {
         char buff[3];
         for(size_t i=0; i < info->len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
+          sprintf(buff, "%02x ", (char) data[i]);
           msg += buff ;
         }
       }
@@ -57,7 +57,7 @@ void onWsEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventT
       } else {
         char buff[3];
         for(size_t i=0; i < info->len; i++) {
-          sprintf(buff, "%02x ", (uint8_t) data[i]);
+          sprintf(buff, "%02x ", (char) data[i]);
           msg += buff ;
         }
       }

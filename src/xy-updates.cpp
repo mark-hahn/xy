@@ -40,8 +40,8 @@ void do_firmware_update(AsyncWebServerRequest *request) {
 void do_mcu_update(AsyncWebServerRequest *request) {
   mcuUpdateReq = (AsyncWebServerRequest *) 0;
 
-  char mcu = 0xff, numParams = request->params();
-  for(char i=0; i < numParams; i++) {
+  uint8_t mcu = 0xff, numParams = request->params();
+  for(uint8_t i=0; i < numParams; i++) {
     AsyncWebParameter* p = request->getParam(i);
     if(p->name() == "mcu") mcu = p->value().toInt();
   }

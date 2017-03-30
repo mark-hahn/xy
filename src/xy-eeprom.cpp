@@ -43,7 +43,7 @@ void initeeprom() {
 
 int eepromGetStrWLen(char* res, int idx, int len){
   EEPROM.begin(512);
-  int i = 0; char chr;
+  int i = 0; uint8_t chr;
 	do { chr = EEPROM.read(idx+i); res[i] = chr; i++; } while (chr);
   EEPROM.end();
 	return idx+len;
