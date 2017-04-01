@@ -69,6 +69,7 @@ void chkStatus(int mcu, uint8_t statusIn) {
 }
 
 void chkTest();
+bool_t chkMcu1 = TRUE;
 bool_t runningTest = FALSE;
 
 /////////////////// action loop  ////////////////////
@@ -84,9 +85,13 @@ void chkCtrl(){
   status[0] = zero2mcu(0);
   if(status[0]) chkStatus(0, status[0]);
 
-  status[1] = zero2mcu(1);
-  if(status[1]) chkStatus(1, status[1]);
-
+	if(chkMcu1) {
+	  status[1] = zero2mcu(1);
+	  if(status[1]) {
+			chkStatus(1, status[1]);
+			chkMcu1 = FALSE;
+		}
+	}
   if (runningTest) chkTest();
 }
 
@@ -137,7 +142,7 @@ void chkTest() {
 				// }
 			  // Serial.println();
 
- 				vel2mcu(0, X, FORWARD, 3, 1000, 2000);
+ 				vel2mcu(0, X, FORWARD, 3, 1000, 1000);
         eof2mcu(0, X);
         eof2mcu(0, Y);
         Serial.println("Sent fwd/eof vector");
@@ -150,7 +155,8 @@ void chkTest() {
 
     case 20:
       if(status[0] == statusMoved) {
- 				vel2mcu(0, X, BACKWARDS, 3, 1000, 2000);
+				byte2mcu(0, idleCmd);
+ 				vel2mcu(0, X, BACKWARDS, 3, 1000, 1000);
         eof2mcu(0, X);
         eof2mcu(0, Y);
         Serial.println("Sent back/eof vector");
@@ -163,7 +169,10 @@ void chkTest() {
       break;
 
     case 30:
-      if(status[0] == statusMoved) state[0] = 10;
+      if(status[0] == statusMoved) {
+				byte2mcu(0, idleCmd);
+				state[0] = 10;
+			}
 			break;
 	}
 }

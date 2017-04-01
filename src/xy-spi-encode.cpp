@@ -87,12 +87,6 @@ uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
 
 // last vector in move, change mcu state from moving to locked
 uint8_t eof2mcu(uint8_t mcu, uint8_t axis) {
-  Serial.print("eof2mcu: ");
-  Serial.print(mcu);
-  Serial.print(" ");
-  Serial.print("axis");
-  Serial.print(" ");
-  Serial.println((0xffffffcf | (axis << 4)), HEX);
   return word2mcu(mcu, (0xffffffcf | (axis << 4)));
 }
 
