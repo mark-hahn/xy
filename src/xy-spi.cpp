@@ -6,7 +6,7 @@
 #include "xy-control.h"
 
 // MCU 0 timing
-#define MCU0_BIT_RATE  4000000 // bit rate (4 mbits)
+#define MCU0_BIT_RATE  1000000 // bit rate (4 mbits)
 #define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
 #define MCU0_WORD_DELAY    100 // usecs between words (too short causes errorSpiByteOverrun)
 
@@ -58,16 +58,16 @@ uint8_t byte2mcu(uint8_t mcu, uint8_t byte) {
 // spi is big-endian
 uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  uint8_t status = trans2mcu(bytes[3], mcu);
+  uint8_t status = trans2mcu(mcu, bytes[3]);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	trans2mcu(bytes[2], mcu);
+	trans2mcu(mcu, bytes[2]);
   delayMicroseconds(byteDelayByMcu[mcu]);
 
-	trans2mcu(bytes[1], mcu);
+	trans2mcu(mcu, bytes[1]);
 	delayMicroseconds(byteDelayByMcu[mcu]);
 
-	trans2mcu(bytes[0], mcu);
+	trans2mcu(mcu, bytes[0]);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
@@ -104,21 +104,14 @@ uint8_t zero2mcu(uint8_t mcu) {
   return byte2mcu(mcu, 0);
 }
 
-// send one byte immediate command, not per-axis
-uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd) {
+// send one byte immediate command with params, not per-axis
+uint8_t cmdWParams2mcu(uint8_t mcu, uint8_t cmd, uint8_t paramCount, uint8_t *params) {
 	digitalWrite(ssPinByMcu[mcu],0);
   uint8_t status = trans2mcu(mcu, cmd);
-	delayMicroseconds(byteDelayByMcu[mcu]);
-
-	trans2mcu(mcu, 0);
-  delayMicroseconds(byteDelayByMcu[mcu]);
-
-  trans2mcu(mcu, 0);
-	delayMicroseconds(byteDelayByMcu[mcu]);
-
-  trans2mcu(mcu, 0);
-  delayMicroseconds(byteDelayByMcu[mcu]);
-
+  for(int i = 0; i < paramCount; i++) {
+  	delayMicroseconds(byteDelayByMcu[mcu]);
+  	trans2mcu(mcu, params[i]);
+  }
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   return status;
@@ -127,10 +120,7 @@ uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd) {
 uint8_t getMcuState(uint8_t mcu) {
   uint8_t mcu_state;
   do {
-  	digitalWrite(ssPinByMcu[mcu], 0);
-    mcu_state = trans2mcu(mcu, nopCmd);
-  	digitalWrite(ssPinByMcu[mcu], 1);
-    delayMicroseconds(wordDelayByMcu[mcu]);
+    mcu_state = zero2mcu(mcu);
     if(mcu_state == 0) delay(1);
   } while(mcu_state == 0);
   return mcu_state;

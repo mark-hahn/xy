@@ -133,11 +133,12 @@ typedef enum Error {
   errorVecBufOverflow    = 14,
 
   // comm errors must start at errorSpiByteSync and be last
-  errorSpiByteSync       = 48,
-  errorSpiByteOverrun    = 50,
-  errorSpiBytesOverrun   = 52,
-  errorSpiOvflw          = 54,
-  errorSpiWcol           = 56,
+  errorSpiByteSync       = 48,  // f0
+  errorSpiByteOverrun    = 50,  // f2
+  errorSpiBytesOverrun   = 52,  // f4
+  errorSpiOvflw          = 54,  // f6
+  errorSpiWcol           = 56,  // f8
+  errorSpuriousInt       = 58,  // fa
 
   errorNoResponse  = 0x3f // miso pull-up returns 0xff when no mcu
 } Error;

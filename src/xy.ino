@@ -19,8 +19,9 @@ void setup() {
 
 	Serial.begin(115200);
 	Serial.println(String("\n\nXY Control App Starting -- ") + VERSION);
-	Serial.println(String("Free Code Space: ") + ESP.getFreeSketchSpace());
-
+	Serial.print("Flash Chip Real Size: "); Serial.println(ESP.getFlashChipRealSize());
+  Serial.print("Sketch size: "); Serial.println(ESP.getSketchSize());
+  Serial.print("Free size: ");   Serial.println(ESP.getFreeSketchSpace());
 	pinMode(PWRLED, OUTPUT);
 	digitalWrite(PWRLED, 0);
   pinMode(PWRON, INPUT);
@@ -33,7 +34,8 @@ void setup() {
   setupWebsocket();
 	initSpi();
 
-	// ZTest();
+	test();
+
 }
 
 void loop() {

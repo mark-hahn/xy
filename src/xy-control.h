@@ -3,8 +3,7 @@
 #define CTRL_H
 
 void printHex8(uint8_t byte);
-void diagonalTest();
-void ZTest();
+void test();
 
 void chkCtrl();
 
