@@ -8,16 +8,16 @@
 // MCU 0 timing
 #define MCU0_BIT_RATE  1000000 // bit rate (4 mbits)
 #define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
-#define MCU0_WORD_DELAY    100 // usecs between words (too short causes errorSpiByteOverrun)
+#define MCU0_WORD_DELAY    200 // usecs between words (too short causes errorSpiByteOverrun)
 
 // add-on initial timing
 // add-on timing is slow until device id is known
 #define DEF_BIT_RATE    800000 // (0.8 mbits)
 #define DEF_BYTE_DELAY      10
-#define DEF_WORD_DELAY     100
+#define DEF_WORD_DELAY     200
 
 // status rec
-uint8_t statusRec[STATUS_REC_LEN];
+StatusRecU statusRec;
 uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 
 #define SCK 14
@@ -126,6 +126,18 @@ uint8_t getMcuState(uint8_t mcu) {
   return mcu_state;
 }
 
+void dumpStatusRec() {
+  Serial.println("\nStatus Record ...");
+  // Serial.print("len        "); Serial.println(statusRec.rec.len);
+  Serial.print("type       "); Serial.println(statusRec.rec.type);
+  Serial.print("mfr        "); Serial.println(statusRec.rec.mfr);
+  Serial.print("prod       "); Serial.println(statusRec.rec.prod);
+  Serial.print("vers       "); Serial.println(statusRec.rec.vers);
+  Serial.print("homeDistX  "); Serial.println(statusRec.rec.homeDistX);
+  Serial.print("homeDistY  "); Serial.println(statusRec.rec.homeDistY);
+  Serial.println();
+}
+
 // unpack statusRecInBuf into statusRec
 void unpackRec(uint8_t recLen) {
 	uint8_t statusRecIdx = 0;
@@ -139,18 +151,18 @@ void unpackRec(uint8_t recLen) {
 
 			case 1:
 			  curByte |= ((sixBits & 0x30) >> 4);
-				statusRec[statusRecIdx++] = curByte;
+				statusRec.bytes[statusRecIdx++] = curByte;
 				curByte  = ((sixBits & 0x0f) << 4);
 			  break;
 
 			case 2:
 			  curByte |= ((sixBits & 0x3c) >> 2);
-				statusRec[statusRecIdx++] = curByte;
+				statusRec.bytes[statusRecIdx++] = curByte;
 				curByte  = ((sixBits & 0x03) << 6);
 				break;
 
 			case 3:
-				statusRec[statusRecIdx++] = curByte | sixBits;;
+				statusRec.bytes[statusRecIdx++] = curByte | sixBits;
 			  break;
 		}
 	}
@@ -192,7 +204,6 @@ uint8_t getMcuStatusRec(uint8_t mcu) {
          statusRecInIdx < STATUS_REC_BUF_LEN) {
       uint8_t statusData = (byteIn & 0x3f);
       statusRecInBuf[statusRecInIdx++] = statusData;
-
       // first byte is rec len
       if(statusRecInIdx == 1)
         recLen1 = statusData << 2;

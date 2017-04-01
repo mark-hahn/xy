@@ -95,9 +95,12 @@ void chkCtrl(){
   if (runningTest) chkTest();
 }
 
-
 /////////////////// tests  ////////////////////
 uint8_t state[2] = {0,0};
+
+uint16_t pps = 2400;
+uint16_t pulseCount = 3000;
+uint8_t  ustep = 1;
 
 void test() {
 	state[0] = 0;
@@ -114,7 +117,7 @@ void chkTest() {
     case 0:
       if(pwrSw == 1) {
 				delay(100);  // wait 100 ms for mcu and motor drivers to wake up
-				Serial.println("sending clear-error, idle, and home cmds");
+				// Serial.println("sending clear-error, idle, and home cmds");
         byte2mcu(0, clearErrorCmd);
         byte2mcu(0, idleCmd);
         byte2mcu(0, homeCmd);
@@ -124,45 +127,41 @@ void chkTest() {
 
     case 10:
 			if(status[0] == statusLocked) {
-				Serial.println("locked, sending vel2mcu, eof2mcu, and move");
+				// Serial.println("locked, chk statrec, send vel2mcu, eof2mcu, and move");
 
-				// uint8_t stat;
-				// get status rec, just to see hex in console
-				// do {
-				// 	stat = getMcuStatusRec(0);
-				// 	if(stat == 254) {
-				// 		Serial.println("status rec too long");
-				// 		break;
-				// 	}
-				// 	if((stat & RET_TYPE_MASK) == typeError) return;
-				// } while (stat != 0);
-				//
-			  // for(uint8_t i = 0; i < STATUS_REC_LEN; i++) {
-			  //   printHex8(statusRecInBuf[i]); Serial.print(" ");
-				// }
-			  // Serial.println();
+				uint8_t stat;
+				do {
+					stat = getMcuStatusRec(0);
+					if(stat == 254) {
+						Serial.println("status rec too long");
+						break;
+					}
+					if((stat & RET_TYPE_MASK) == typeError) return;
+				} while (stat != 0);
+				dumpStatusRec();
 
- 				vel2mcu(0, X, FORWARD, 3, 1000, 1000);
+				byte2mcu(0, idleCmd);
+			vel2mcu(0, X, FORWARD, ustep, pps, pulseCount);
         eof2mcu(0, X);
         eof2mcu(0, Y);
-        Serial.println("Sent fwd/eof vector");
+        // Serial.println("Sent fwd/eof vector");
 
         byte2mcu(0, moveCmd);
-        Serial.println("Sent move cmd");
-        state[0] = 20;
+        // Serial.println("Sent move cmd");
+        state[0] = 30;
       }
       break;
 
     case 20:
       if(status[0] == statusMoved) {
 				byte2mcu(0, idleCmd);
- 				vel2mcu(0, X, BACKWARDS, 3, 1000, 1000);
+ 				vel2mcu(0, X, BACKWARDS, ustep, pps, pulseCount);
         eof2mcu(0, X);
         eof2mcu(0, Y);
-        Serial.println("Sent back/eof vector");
+        // Serial.println("Sent back/eof vector");
 
         byte2mcu(0, moveCmd);
-        Serial.println("Sent move cmd");
+        // Serial.println("Sent move cmd");
 
         state[0] = 30;
       }
@@ -171,7 +170,7 @@ void chkTest() {
     case 30:
       if(status[0] == statusMoved) {
 				byte2mcu(0, idleCmd);
-				state[0] = 10;
+				state[0] = 0;
 			}
 			break;
 	}

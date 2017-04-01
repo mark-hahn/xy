@@ -101,14 +101,16 @@ typedef enum Status {
 // this record is returned to the CPU when requested by statusCmd
 // must be sequential with status byte before and after
 // future api versions may extend record
+// words must be word aligned
 typedef struct StatusRec {
   uint8_t len;            // number of SPI bytes in rec, NOT sizeof(StatusRec)
   uint8_t type;           // type of record (always STATUS_REC for now)
   uint8_t mfr;            // manufacturer code (1 == eridien)
   uint8_t prod;           // product id (1 = XY base)
   uint8_t vers;           // XY (code and hw) version
-  uint32_t homeDistX;  // homing distance of last home operation
-  uint32_t homeDistY;
+  uint8_t padding[3];
+  int32_t homeDistX;      // homing distance of last home operation
+  int32_t homeDistY;
 } StatusRec;
 
 #define STATUS_SPI_BYTE_COUNT \
@@ -116,7 +118,7 @@ typedef struct StatusRec {
 
 typedef union StatusRecU {
   StatusRec rec;
-  uint8_t      bytes[sizeof(StatusRec)];
+  uint8_t   bytes[sizeof(StatusRec)];
 } StatusRecU;
 
 // top 2 bits are 0b11 (typeError)
@@ -133,12 +135,12 @@ typedef enum Error {
   errorVecBufOverflow    = 14,
 
   // comm errors must start at errorSpiByteSync and be last
-  errorSpiByteSync       = 48,  // f0
-  errorSpiByteOverrun    = 50,  // f2
-  errorSpiBytesOverrun   = 52,  // f4
-  errorSpiOvflw          = 54,  // f6
-  errorSpiWcol           = 56,  // f8
-  errorSpuriousInt       = 58,  // fa
+  errorSpiByteSync       = 48,
+  errorSpiByteOverrun    = 50,
+  errorSpiBytesOverrun   = 52,
+  errorSpiOvflw          = 54,
+  errorSpiWcol           = 56,
+  errorSpuriousInt       = 58,
 
   errorNoResponse  = 0x3f // miso pull-up returns 0xff when no mcu
 } Error;
