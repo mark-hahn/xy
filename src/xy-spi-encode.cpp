@@ -22,12 +22,12 @@ uint8_t delay2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs) {
   return ints2mcu(mcu, int1, int2);
 }
 
-// signed acceleration vector
+// acceleration vector
 // acceleration is 8-bit signed change to pps
 // add another accel2mcu for more pulses
 uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
                int8_t accel, uint16_t pulseCount) {
-  uint16_t int1 = 0xfe00 | accel;
+  uint16_t int1 = 0xfe00 | (uint16_t)(accel & 0xff);
   uint16_t int2 = (ustep << 13) | (axis << 12) | (pulseCount & 0x0fff);
   return ints2mcu(mcu, int1, int2);
 }

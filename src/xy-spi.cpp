@@ -6,15 +6,15 @@
 #include "xy-control.h"
 
 // MCU 0 timing
-#define MCU0_BIT_RATE  1000000 // bit rate (4 mbits)
+#define MCU0_BIT_RATE  1000000 // bit rate (1 mbit)
 #define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
-#define MCU0_WORD_DELAY    200 // usecs between words (too short causes errorSpiByteOverrun)
+#define MCU0_WORD_DELAY    300 // usecs between words (too short causes errorSpiByteOverrun)
 
 // add-on initial timing
 // add-on timing is slow until device id is known
-#define DEF_BIT_RATE    800000 // (0.8 mbits)
+#define DEF_BIT_RATE    1000000 // (0.8 mbits)
 #define DEF_BYTE_DELAY      10
-#define DEF_WORD_DELAY     200
+#define DEF_WORD_DELAY     300
 
 // status rec
 StatusRecU statusRec;
