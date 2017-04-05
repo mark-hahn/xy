@@ -4,6 +4,7 @@
 #include "xy-spi.h"
 #include "mcu-cpu.h"
 #include "xy-control.h"
+#include "xy-spi-encode.h"
 
 // MCU 0 timing
 #define MCU0_BIT_RATE  1000000 // bit rate (1 mbit)
@@ -181,7 +182,7 @@ uint8_t getMcuStatusRec(uint8_t mcu) {
   uint8_t nonTypeCount = 0;
 
   // request status rec
-  byte2mcu(mcu, statusCmd);
+  cmd2mcu(mcu, statusCmd);
 
   // scan for data byte skipping state bytes
   while(1){
@@ -222,7 +223,7 @@ uint8_t getMcuStatusRec(uint8_t mcu) {
       else
         return byteIn; // status rec aborted
     }
-    byteIn = byte2mcu(mcu, nopCmd);
+    byteIn = zero2mcu(mcu);
     // data bytes must be sequential
     if(!byteIn) return getMcuState(mcu);
   }
@@ -280,7 +281,7 @@ void flashMcuBytes(uint8_t mcu, unsigned int addr, char *buf, int len){
   if(lastBlkAddr == 0xffff) {
     Serial.println("erasing block to start boot loader, updateFlashCodecmd");
     // start boot loader in mcu
-    uint8_t status = byte2mcu(mcu, updateFlashCode);
+    uint8_t status = cmd2mcu(mcu, updateFlashCode);
     delay(1000);
     uint8_t stat = getMcuState(mcu); // ignore first response
     Serial.println(String("first resp after updateFlashCodecmd: ") + String(stat, HEX));

@@ -35,8 +35,6 @@ typedef long pos_t; // 32 bits signed
 
 // immediate 5-bit command -- top is 0b100
 // may be followed by param bytes
-// set homing speeds have microstep in byte 2 and speed (usecs/step) in 3-4
-// setMotorCurrent has param in byte 2
 typedef enum Cmd {
   nopCmd               =  0, // does nothing except get status
   statusCmd            =  1, // requests status rec returned
@@ -92,8 +90,9 @@ typedef enum Settings {
 
 // 1:  100i iiii  -- 5-bit immediate cmd - more bytes may follow
 // 0:  010d vvvv vvvv vvvv uuua 0000 xxxx xxxx  -- settings,   (5 unused bits)
-// 0:  000d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
+// 0:  001d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
 //  if pulse count is zero then uuudvvvvvvvvvvvv is 16-bit usecs delay (not pps)
+//  move vec d29 is 1 to ensure zero bytes aren't interpreted as commands
 
 //Curve vectors, each field is one pulse of signed pps change ...
 //

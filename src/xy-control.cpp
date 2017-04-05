@@ -122,6 +122,7 @@ void chkTest() {
       if(pwrSw == 1) {
 				delay(1000);
 
+				Serial.println("sending home cmd");
 				cmd2mcu(0, clearDistance);
         cmd2mcu(0, homeCmd);
         state[0] = 10;

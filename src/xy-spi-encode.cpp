@@ -27,10 +27,10 @@ uint8_t settingsVector2mcu(uint8_t mcu, uint8_t axis, uint8_t dir,
 // add another vel2mcu for more pulses
 // add delay2mcu for longer usecs/single-pulse
 // uses acceleration for to go to specified velocity but no decelleration at end
-// 0:  000d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
+// 0:  001d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
 uint8_t moveVector2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
                 uint16_t pps, uint16_t pulseCount) {
-  uint16_t int1 = (dir  << 12) | pps;
+  uint16_t int1 = 0x2000        | (dir  << 12) | pps;
   uint16_t int2 = (ustep << 13) | (axis << 12) | pulseCount;
   return ints2mcu(mcu, int1, int2);
 }
@@ -39,7 +39,7 @@ uint8_t moveVector2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
 // max delay 65.536 ms
 // move vector with pulse count of zero, uuudvvvvvvvvvvvv is 16-bit usecs delay (not pps)
 uint8_t delayVector2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs) {
-  uint16_t int1 = (delayUsecs & 0x1fff);
+  uint16_t int1 = 0x2000 | (delayUsecs & 0x1fff);
   uint16_t int2 = (delayUsecs & 0xe000) | (axis << 12);
   return ints2mcu(mcu, int1, int2);
 }
