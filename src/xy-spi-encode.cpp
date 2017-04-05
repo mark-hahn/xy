@@ -3,38 +3,51 @@
 #include "xy-spi.h"
 #include "xy-spi-encode.h"
 
-// velocity vector for straight line
+// mcu immediate command
+// see cmdWParams2mcu in xy-spi.h
+// 1:  100i iiii  -- 5-bit immediate cmd
+uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd) {
+  return byte2mcu(mcu, (0x80 | cmd));
+}
+
+// settings vector
+// set acceleration, start velocity, ustep, and direction
+// does not cause any action, just defaults
+// acceleration of
+// 0:  010d vvvv vvvv vvvv uuua 0000 xxxx xxxx  -- settings,   (5 unused bits)
+uint8_t settingsVector2mcu(uint8_t mcu, uint8_t axis, uint8_t dir,
+                           uint8_t ustep, uint16_t pps, uint8_t acceleration) {
+  uint16_t int1 = 0x4000        | (dir  << 12) | pps;
+  uint16_t int2 = (ustep << 13) | (axis << 12) | acceleration;
+  return ints2mcu(mcu, int1, int2);
+}
+
+// move vector
 // max 65.536 ms per pulse (65536 usec) and max 4096 pulses
 // add another vel2mcu for more pulses
 // add delay2mcu for longer usecs/single-pulse
-uint8_t vel2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
-              uint16_t pps, uint16_t pulseCount) {
-  uint16_t int1 = 0x8000        | (dir  << 12) | (pps & 0x0fff);
-  uint16_t int2 = (ustep << 13) | (axis << 12) | (pulseCount & 0x0fff);
+// uses acceleration for to go to specified velocity but no decelleration at end
+// 0:  000d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
+uint8_t moveVector2mcu(uint8_t mcu, uint8_t axis, uint8_t dir, uint8_t ustep,
+                uint16_t pps, uint16_t pulseCount) {
+  uint16_t int1 = (dir  << 12) | pps;
+  uint16_t int2 = (ustep << 13) | (axis << 12) | pulseCount;
   return ints2mcu(mcu, int1, int2);
 }
 
 // delay vector, no pulses
 // max delay 65.536 ms
-uint8_t delay2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs) {
-  uint16_t int1 = 0x8000 | (delayUsecs & 0x1fff);
+// move vector with pulse count of zero, uuudvvvvvvvvvvvv is 16-bit usecs delay (not pps)
+uint8_t delayVector2mcu(uint8_t mcu, uint8_t axis, uint16_t delayUsecs) {
+  uint16_t int1 = (delayUsecs & 0x1fff);
   uint16_t int2 = (delayUsecs & 0xe000) | (axis << 12);
   return ints2mcu(mcu, int1, int2);
 }
 
-// acceleration vector
-// acceleration is 8-bit signed change to pps
-// add another accel2mcu for more pulses
-uint8_t accel2mcu(uint8_t mcu, uint8_t axis, uint8_t ustep,
-               int8_t accel, uint16_t pulseCount) {
-  uint16_t int1 = 0xfe00 | (uint16_t)(accel & 0xff);
-  uint16_t int2 = (ustep << 13) | (axis << 12) | (pulseCount & 0x0fff);
-  return ints2mcu(mcu, int1, int2);
-}
-
-// array of signed acceleration to pps (2x8 -> 9x3)
+// ------------ TODO -------------
+// array of signed pps changes (2x8 -> 9x3)
 // dir and ustep are same as last vector
-uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
+uint8_t curveVector2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
   uint8_t b[4];
   switch(count) {
     case 2: b[0] = 0xff; b[1] = 0xfc | axis;      // 2x8
@@ -86,79 +99,6 @@ uint8_t accels2mcu(uint8_t mcu, uint8_t axis, uint8_t count, int8_t *a) {
 }
 
 // last vector in move, change mcu state from moving to locked
-uint8_t eof2mcu(uint8_t mcu, uint8_t axis) {
+uint8_t eofVector2mcu(uint8_t mcu, uint8_t axis) {
   return word2mcu(mcu, (0xffffffcf | (axis << 4)));
 }
-
-
-/*                 ---- PROTOCOL ----
-
-iiiiiii:        7-bit immediate cmd
-a:              axis, X (0) or Y (1)
-d:              direction (0: backwards, 1:forwards)
-uuu:            microstep, 0 (1x) to 5 (32x)
-xxxxxxxx:        8-bit signed acceleration in pulses/sec/sec
-vvvvvvvvvvvv:   12-bit velocity in pulses/sec
-cccccccccccc:   12-bit pulse count
-E-M: curve acceleration field, signed
-zzzz: vector list markers
-  15: eof, end of moving
-
-
-Number before : is number of leading 1's
-
- 0:  0iii iiii  -- 7-bit immediate cmd - more bytes may follow
- 1:  100d vvvv vvvv vvvv uuua cccc cccc cccc  -- velocity vector  (1 unused bit)
-     if pulse count is zero then uuudvvvvvvvvvvvv is 16-bit usecs delay (not pps)
-
- 7:  1111 1110 xxxx xxxx uuua cccc cccc cccc  -- acceleration vector
-
-Curve vectors, each field is one pulse of signed acceleration ...
-
- 3:  1110 aEEE  FFFG GGHH  HIII JJJK  KKLL LMMM --  9 3-bit
- 6:  1111 110a  FFFG GGHH  HIII JJJK  KKLL LMMM --  8 3-bit
- 2:  110a EEEE  FFFF GGGG  HHHH IIII  JJJJ KKKK --  7 4-bit
- 5:  1111 100a  EEEE FFFF  GGGG HHHH  IIII JJJJ --  6 4-bit (1 unused bit)
- 4:  1111 00aF  FFFF GGGG  GHHH HHII  IIIJ JJJJ --  5 5-bit (1 unused bit)
-10:  1111 1111  110a FFFF  FGGG GGHH  HHHI IIII --  4 5-bit
- 9:  1111 1111  10aF FFFF  FFGG GGGG  GHHH HHHH --  3 7-bit
-14:  1111 1111  1111 110a  GGGG GGGG  HHHH HHHH --  2 8-bit
-
-26:  1111 1111 1111 1111 1111 1111 110a zzzz  -- 4-bit vector marker
-
-Sample Calculations (unfinished) ...
-
-Typical case:
-
-1000 mm/sec/sec =>  mm/ms/sec, assuming 1000 pps this is 1 mm/sec of velocity change each ms.  To get to a speed of 100 mm/sec, it would take 100 ms in 100 pulses.  This would cover 10 mm.
-
-at 3000 mm/sec/sec, 3mm/ms/sec, and 3000 pps, it would be 3mm/sec vel increment. to get to 270 mm/sec would require 90 steps in 30 ms, covering 5000 (185*90) mm, or 15 meters.
-
-given
-  1) accel: mm/sec/sec  constant acceleration, typ. 1000
-  2) vel:   mm/sec      end target speed,      typ. 100
-  3) ppmm:  pulses/mm   constant ratio,        typ. 20  (1/4 step per pulse)
-
-  vel*ppmm => pps: end pulses/sec  typ. 2000
-  avg pps = 1000
-
-
-each pulse:
-  1ms -> 1mm/ms  0.5 mm
-  2ms -> 2mm/ms  2 mm
-  3ms -> 3mm/ms  4.5
-  4ms -> 4mm/ms  8
-
-  time: ms =>
-
-avg vel: 50 mm/sec
-avg pps: 1000
-
-
-pps pulse rate (final update rate), you get mm/sec vel inc, number of steps, time, and distance.
-
-
-10-bit (was 8) signed acceleration in PPS/sec, 3000 mm/s/s => 3mm/ms incr which is at most
-
-12-bit pulse count
- */

@@ -33,7 +33,7 @@ typedef long pos_t; // 32 bits signed
 
 //////////////////////  Immediate Commands  ///////////////////////
 
-// immediate 7-bit commands -- top 1 bit is zero
+// immediate 5-bit command -- top is 0b100
 // may be followed by param bytes
 // set homing speeds have microstep in byte 2 and speed (usecs/step) in 3-4
 // setMotorCurrent has param in byte 2
@@ -41,7 +41,8 @@ typedef enum Cmd {
   nopCmd               =  0, // does nothing except get status
   statusCmd            =  1, // requests status rec returned
   clearErrorCmd        =  2, // on error, no activity until this command
-  updateFlashCode      =  3, // set flash bytes as no-app flag and reboot
+  settingsCmd          =  3, // byte 2 is setting idx, 3 & 4 are int16 value
+  updateFlashCode      =  4, // set flash bytes as no-app flag and reboot
 
   // commands specific to one add-on start at 10
   idleCmd              = 10, // abort any commands, clear vec buffers
@@ -49,11 +50,65 @@ typedef enum Cmd {
   unlockCmd            = 12, // clear reset pins on motors to high
   homeCmd              = 13, // goes home and saves homing distance
   moveCmd              = 14, // enough vectors need to be loaded to do this
-  setHomingSpeed       = 15, // set homeUIdx & homeUsecPerPulse settings
-  setHomingBackupSpeed = 16, // set homeBkupUIdx & homeBkupUsecPerPulse settings
-  setMotorCurrent      = 17, // set motorCurrent (0 to 31) immediately
-  setDirectionLevels   = 18  // set direction for each motor
+  clearDistance        = 19  // clear distance counters
 } Cmd;
+
+
+/////////////////////////////////  SETTINGS  ///////////////////////////
+
+// all of these are int16_t
+typedef enum Settings {
+  motorCurrent,    // meaning varies between MCUs
+  directionLevels, // x dir: d1, y dir: d0
+  debounceTime,    // all times are 1/160 seconds
+  homingUstep,
+  homingPps,
+  homeBkupUstep,
+  homeBkupPps,
+  homeAccel,      // mm/sec/sec -- ranges from +-1 (30) to +-127 (4000)
+  homeJerk,
+  homeOfsX,
+  homeOfsY,
+  NUM_SETTINGS
+} Settings;
+
+
+/////////////////////////////////  VECTORS  ///////////////////////////
+// all unsigned but one, E-M
+//
+//iiiii:          5-bit immediate cmd
+//a:              axis, X (0) or Y (1)
+//d:              direction (0: backwards, 1:forwards)
+//uuu:            microstep, 0 (1x) to 5 (32x)
+//xxxxxxxx:        8-bit acceleration in pulses/sec/sec
+//vvvvvvvvvvvv:   12-bit velocity in pulses/sec
+//cccccccccccc:   12-bit pulse count
+//E-M: curve pps change field, signed
+//zzzz: vector list markers
+//  15: eof, end of moving
+
+//Number before : is number of leading 1's
+
+
+// 1:  100i iiii  -- 5-bit immediate cmd - more bytes may follow
+// 0:  010d vvvv vvvv vvvv uuua 0000 xxxx xxxx  -- settings,   (5 unused bits)
+// 0:  000d vvvv vvvv vvvv uuua cccc cccc cccc  -- move,       (1 unused bit)
+//  if pulse count is zero then uuudvvvvvvvvvvvv is 16-bit usecs delay (not pps)
+
+//Curve vectors, each field is one pulse of signed pps change ...
+//
+// 3:  1110 aEEE  FFFG GGHH  HIII JJJK  KKLL LMMM --  9 3-bit
+// 6:  1111 110a  FFFG GGHH  HIII JJJK  KKLL LMMM --  8 3-bit
+// 2:  110a EEEE  FFFF GGGG  HHHH IIII  JJJJ KKKK --  7 4-bit
+// 5:  1111 100a  EEEE FFFF  GGGG HHHH  IIII JJJJ --  6 4-bit (1 unused bit)
+// 4:  1111 00aF  FFFF GGGG  GHHH HHII  IIIJ JJJJ --  5 5-bit (1 unused bit)
+//10:  1111 1111  110a FFFF  FGGG GGHH  HHHI IIII --  4 5-bit
+// 9:  1111 1111  10aF FFFF  FFGG GGGG  GHHH HHHH --  3 7-bit
+//14:  1111 1111  1111 110a  GGGG GGGG  HHHH HHHH --  2 8-bit
+//
+//26:  1111 1111 1111 1111 1111 1111 110a zzzz  -- 4-bit vector marker
+
+
 
 /////////////////////////////////  MCU => CPU  ///////////////////////////
 
@@ -109,8 +164,8 @@ typedef struct StatusRec {
   uint8_t prod;           // product id (1 = XY base)
   uint8_t vers;           // XY (code and hw) version
   uint8_t padding[3];
-  int32_t homeDistX;      // homing distance of last home operation
-  int32_t homeDistY;
+  int32_t distanceX;      // homing distance of last home operation
+  int32_t distanceY;
 } StatusRec;
 
 #define STATUS_SPI_BYTE_COUNT \
@@ -133,6 +188,7 @@ typedef enum Error {
   errorFault             = 10, // driver chip fault
   errorLimit             = 12, // hit error limit switch during move backwards
   errorVecBufOverflow    = 14,
+  errorVecBufUnderflow   = 16,
 
   // comm errors must start at errorSpiByteSync and be last
   errorSpiByteSync       = 48,

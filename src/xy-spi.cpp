@@ -8,13 +8,13 @@
 // MCU 0 timing
 #define MCU0_BIT_RATE  1000000 // bit rate (1 mbit)
 #define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
-#define MCU0_WORD_DELAY    300 // usecs between words (too short causes errorSpiByteOverrun)
+#define MCU0_WORD_DELAY    500 // usecs between words (too short causes errorSpiByteOverrun)
 
 // add-on initial timing
 // add-on timing is slow until device id is known
 #define DEF_BIT_RATE    1000000 // (0.8 mbits)
 #define DEF_BYTE_DELAY      10
-#define DEF_WORD_DELAY     300
+#define DEF_WORD_DELAY     500
 
 // status rec
 StatusRecU statusRec;
@@ -107,7 +107,7 @@ uint8_t zero2mcu(uint8_t mcu) {
 // send one byte immediate command with params, not per-axis
 uint8_t cmdWParams2mcu(uint8_t mcu, uint8_t cmd, uint8_t paramCount, uint8_t *params) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  uint8_t status = trans2mcu(mcu, cmd);
+  uint8_t status = trans2mcu(mcu, (0x80 | cmd));
   for(int i = 0; i < paramCount; i++) {
   	delayMicroseconds(byteDelayByMcu[mcu]);
   	trans2mcu(mcu, params[i]);
@@ -133,8 +133,8 @@ void dumpStatusRec() {
   Serial.print("mfr        "); Serial.println(statusRec.rec.mfr);
   Serial.print("prod       "); Serial.println(statusRec.rec.prod);
   Serial.print("vers       "); Serial.println(statusRec.rec.vers);
-  Serial.print("homeDistX  "); Serial.println(statusRec.rec.homeDistX);
-  Serial.print("homeDistY  "); Serial.println(statusRec.rec.homeDistY);
+  Serial.print("distanceX  "); Serial.println(statusRec.rec.distanceX);
+  Serial.print("distanceY  "); Serial.println(statusRec.rec.distanceY);
   Serial.println();
 }
 

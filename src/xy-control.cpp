@@ -61,7 +61,7 @@ void chkStatus(int mcu, uint8_t statusIn) {
   }
 	if(errorCode[mcu]) {
 		  zero2mcu(mcu);
-			byte2mcu(mcu, clearErrorCmd);
+			cmd2mcu(mcu, clearErrorCmd);
 		  zero2mcu(mcu);
 	}
 	lastStatus[mcu] = status[mcu];
@@ -98,12 +98,13 @@ void chkCtrl(){
 /////////////////// tests  ////////////////////
 uint8_t state[2] = {0,0};
 
-uint16_t pps = 2000;
-uint16_t pulseCount = 1500;
-uint8_t  ustep = 0;
-int8_t   accell = 20;  //  +1 mm/sec every pulse
+uint8_t  ustep       = 2;
+int8_t   accell      = 8;
+uint16_t pps         = 1000;  // start at 200 mm/sec
+uint16_t pulseCount  = 1500;
+uint16_t startPPS    = 50;
+
 uint8_t  rampPulseCount;
-uint16_t startPPS = 20;
 
 void test() {
 	state[0] = 0;
@@ -119,19 +120,16 @@ void chkTest() {
   switch (state[0]) {
     case 0:
       if(pwrSw == 1) {
-				delay(100);  // wait 100 ms for mcu and motor drivers to wake up
-				// Serial.println("sending clear-error, idle, and home cmds");
-        byte2mcu(0, clearErrorCmd);
-        byte2mcu(0, idleCmd);
-        byte2mcu(0, homeCmd);
+				delay(1000);
+
+				cmd2mcu(0, clearDistance);
+        cmd2mcu(0, homeCmd);
         state[0] = 10;
       }
       break;
 
     case 10:
-			if(status[0] == statusLocked) {
-				// Serial.println("locked, chk statrec, send vel2mcu, eof2mcu, and move");
-
+			if(status[0] == statusMoved) {
 				uint8_t stat;
 				do {
 					stat = getMcuStatusRec(0);
@@ -143,46 +141,47 @@ void chkTest() {
 				} while (stat != 0);
 				dumpStatusRec();
 
-				byte2mcu(0, idleCmd);
-
+				cmd2mcu(0, idleCmd);
 				rampPulseCount = (pps-startPPS)/accell;
 
-			  vel2mcu(  0, X, FORWARD, ustep, startPPS, 1);
-        accel2mcu(0, X,          ustep,   accell, rampPulseCount);
-			  vel2mcu(  0, X, FORWARD, ustep,      pps, pulseCount - 2 * rampPulseCount);
-        accel2mcu(0, X,          ustep,  -accell, rampPulseCount);
-				eof2mcu(  0, X);
+				settingsVector2mcu(0, X, FORWARD, ustep, startPPS, accell);
+			  moveVector2mcu(    0, X, FORWARD, ustep,      pps, pulseCount - rampPulseCount);
+			  moveVector2mcu(    0, X, FORWARD, ustep, startPPS, rampPulseCount);
+				eofVector2mcu(     0, X);
 
-        eof2mcu(0, Y);
-        // Serial.println("Sent fwd/eof vector");
+				settingsVector2mcu(0, Y, FORWARD, ustep, startPPS, accell);
+			  moveVector2mcu(    0, Y, FORWARD, ustep,      pps, pulseCount - rampPulseCount);
+			  moveVector2mcu(    0, Y, FORWARD, ustep, startPPS, rampPulseCount);
+				eofVector2mcu(     0, Y);
 
-        byte2mcu(0, moveCmd);
-        // Serial.println("Sent move cmd");
+        cmd2mcu(0, moveCmd);
         state[0] = 30;
       }
       break;
 
-    // case 20:
-    //   if(status[0] == statusMoved) {
-		// 		byte2mcu(0, idleCmd);
- 	// 			vel2mcu(0, X, BACKWARDS, ustep, pps, pulseCount);
-    //     eof2mcu(0, X);
-    //     eof2mcu(0, Y);
-    //     // Serial.println("Sent back/eof vector");
-		//
-    //     byte2mcu(0, moveCmd);
-    //     // Serial.println("Sent move cmd");
-		//
-    //     state[0] = 30;
-    //   }
-    //   break;
+    case 20:
+      if(status[0] == statusMoved) {
+				cmd2mcu(0, idleCmd);
+
+				settingsVector2mcu(0, X, BACKWARDS, ustep, startPPS, accell);
+			  moveVector2mcu(    0, X, BACKWARDS, ustep,      pps, pulseCount - rampPulseCount);
+			  moveVector2mcu(    0, X, BACKWARDS, ustep, startPPS, rampPulseCount);
+				eofVector2mcu(     0, X);
+
+				settingsVector2mcu(0, Y, BACKWARDS, ustep, startPPS, accell);
+			  moveVector2mcu(    0, Y, BACKWARDS, ustep,      pps, pulseCount - rampPulseCount);
+			  moveVector2mcu(    0, Y, BACKWARDS, ustep, startPPS, rampPulseCount);
+				eofVector2mcu(     0, Y);
+
+        state[0] = 30;
+      }
+      break;
 
     case 30:
       if(status[0] == statusMoved) {
-				byte2mcu(0, idleCmd);
 				state[0] = 0;
 
-				pps += 50;
+				pps += 100;
 				Serial.print("pps: "); Serial.println(pps);
 			}
 			break;
