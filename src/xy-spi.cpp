@@ -6,16 +6,9 @@
 #include "xy-control.h"
 #include "xy-spi-encode.h"
 
-// MCU 0 timing
-#define MCU0_BIT_RATE  1000000 // bit rate (1 mbit)
-#define MCU0_BYTE_DELAY     10 // usecs between  8-bit bytes
-#define MCU0_WORD_DELAY    500 // usecs between words (too short causes errorSpiByteOverrun)
-
-// add-on initial timing
-// add-on timing is slow until device id is known
 #define DEF_BIT_RATE    1000000 // (0.8 mbits)
-#define DEF_BYTE_DELAY      10
-#define DEF_WORD_DELAY     500
+#define DEF_BYTE_DELAY      0
+#define DEF_WORD_DELAY     300 // 250 failed
 
 // status rec
 StatusRecU statusRec;
@@ -24,9 +17,9 @@ uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 #define SCK 14
 uint8_t ssPinByMcu[3] = {15, 16, 0};
 
-int32    speedByMcu[3]     = {MCU0_BIT_RATE,   DEF_BIT_RATE,   DEF_BIT_RATE  };
-uint16_t byteDelayByMcu[3] = {MCU0_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY};
-uint16_t wordDelayByMcu[3] = {MCU0_WORD_DELAY, DEF_WORD_DELAY, DEF_WORD_DELAY};
+int32    speedByMcu[3]     = {DEF_BIT_RATE,   DEF_BIT_RATE,   DEF_BIT_RATE  };
+uint16_t byteDelayByMcu[3] = {DEF_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY  };
+uint16_t wordDelayByMcu[3] = {DEF_WORD_DELAY, DEF_WORD_DELAY, DEF_WORD_DELAY  };
 
 void initSpi() {
   pinMode(SCK, OUTPUT); // why?
