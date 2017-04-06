@@ -7,7 +7,7 @@
 #include "xy-spi-encode.h"
 
 #define DEF_BIT_RATE    1000000 // (0.8 mbits)
-#define DEF_BYTE_DELAY      0
+// #define DEF_BYTE_DELAY      0
 #define DEF_WORD_DELAY     300 // 250 failed
 
 // status rec
@@ -18,7 +18,7 @@ uint8_t statusRecInBuf[STATUS_REC_BUF_LEN];
 uint8_t ssPinByMcu[3] = {15, 16, 0};
 
 int32    speedByMcu[3]     = {DEF_BIT_RATE,   DEF_BIT_RATE,   DEF_BIT_RATE  };
-uint16_t byteDelayByMcu[3] = {DEF_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY  };
+// uint16_t byteDelayByMcu[3] = {DEF_BYTE_DELAY, DEF_BYTE_DELAY, DEF_BYTE_DELAY  };
 uint16_t wordDelayByMcu[3] = {DEF_WORD_DELAY, DEF_WORD_DELAY, DEF_WORD_DELAY  };
 
 void initSpi() {
@@ -53,13 +53,13 @@ uint8_t byte2mcu(uint8_t mcu, uint8_t byte) {
 uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes) {
 	digitalWrite(ssPinByMcu[mcu],0);
   uint8_t status = trans2mcu(mcu, bytes[3]);
-	delayMicroseconds(byteDelayByMcu[mcu]);
+	// delayMicroseconds(byteDelayByMcu[mcu]);
 
 	trans2mcu(mcu, bytes[2]);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
 
 	trans2mcu(mcu, bytes[1]);
-	delayMicroseconds(byteDelayByMcu[mcu]);
+	// delayMicroseconds(byteDelayByMcu[mcu]);
 
 	trans2mcu(mcu, bytes[0]);
   digitalWrite(ssPinByMcu[mcu],1);
@@ -71,16 +71,16 @@ uint8_t bytes2mcu(uint8_t mcu, uint8_t *bytes) {
 uint8_t ints2mcu(uint8_t mcu, uint16_t int1, uint16_t int2) {
 	digitalWrite(ssPinByMcu[mcu],0);
   uint8_t status = trans2mcu(mcu, ((uint8_t *) &int1)[1]);
-	delayMicroseconds(byteDelayByMcu[mcu]);
+	// delayMicroseconds(byteDelayByMcu[mcu]);
 
 	trans2mcu(mcu, ((uint8_t *) &int1)[0]);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
 
   trans2mcu(mcu, ((uint8_t *) &int2)[1]);
-	delayMicroseconds(byteDelayByMcu[mcu]);
+	// delayMicroseconds(byteDelayByMcu[mcu]);
 
 	trans2mcu(mcu, ((uint8_t *) &int2)[0]);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
 
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
@@ -103,7 +103,7 @@ uint8_t cmdWParams2mcu(uint8_t mcu, uint8_t cmd, uint8_t paramCount, uint8_t *pa
 	digitalWrite(ssPinByMcu[mcu],0);
   uint8_t status = trans2mcu(mcu, (0x80 | cmd));
   for(int i = 0; i < paramCount; i++) {
-  	delayMicroseconds(byteDelayByMcu[mcu]);
+  	// delayMicroseconds(byteDelayByMcu[mcu]);
   	trans2mcu(mcu, params[i]);
   }
   digitalWrite(ssPinByMcu[mcu],1);
@@ -238,11 +238,11 @@ void flashBlk(uint8_t mcu, unsigned int blkAddr) {
   // erase block
   digitalWrite(ssPinByMcu[mcu],0);
   trans2mcu(mcu, ERASE_CMD);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
   trans2mcu(mcu, blkAddr >> 8);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
   trans2mcu(mcu, blkAddr & 0xff);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
   digitalWrite(ssPinByMcu[mcu],1);
   delayMicroseconds(wordDelayByMcu[mcu]);
   // wait for erase to finish
@@ -252,12 +252,12 @@ void flashBlk(uint8_t mcu, unsigned int blkAddr) {
   // write block
   digitalWrite(ssPinByMcu[mcu],0);
   trans2mcu(mcu, WRITE_CMD);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
   trans2mcu(mcu, blkAddr >> 8);
-  delayMicroseconds(byteDelayByMcu[mcu]);
+  // delayMicroseconds(byteDelayByMcu[mcu]);
   trans2mcu(mcu, blkAddr & 0xff);
   for(uint8_t i=0; i < MAX_BYTES_IN_BLOCK; i++) {
-    delayMicroseconds(byteDelayByMcu[mcu]);
+    // delayMicroseconds(byteDelayByMcu[mcu]);
     trans2mcu(mcu, flashBuf[i]);
   }
   digitalWrite(ssPinByMcu[mcu],1);
