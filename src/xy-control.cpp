@@ -113,7 +113,7 @@ void chkCtrl(){
 	  status[1] = getMcuState(1);
 	  if(status[1]) {
 			chkStatus(1, status[1]);
-			chkMcu1 = FALSE;
+			// chkMcu1 = FALSE;
 		}
 	}
   if (runningTest) chkTest();
@@ -128,9 +128,9 @@ void test() {
 }
 
 void chkTest() {
-  if (errorCode[0] || pwrSw == 0) {
-    state[0] = 0;
-    return;
+  // if (errorCode[0] || pwrSw == 0) {
+  //   state[0] = 0;
+  //   return;
   }
 
   switch (state[0]) {
