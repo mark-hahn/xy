@@ -7,7 +7,7 @@
 // see cmdWParams2mcu in xy-spi.h
 // 1:  100i iiii  -- 5-bit immediate cmd
 uint8_t cmd2mcu(uint8_t mcu, uint8_t cmd) {
-  return byte2mcu(mcu, (0x80 | cmd));
+  return byte2mcu(mcu, (0x80 | cmd | (mcu << 5))); // mcu bit for debugging
 }
 
 // settings vector

@@ -58,12 +58,13 @@ typedef enum Cmd {
 typedef enum Settings {
   motorCurrent,    // meaning varies between MCUs
   directionLevels, // x dir: d1, y dir: d0
-  debounceTime,    // all times are 1/160 seconds
+  disableLimitX,
+
   homingUstep,
   homingPps,
   homeBkupUstep,
   homeBkupPps,
-  homeAccel,      // mm/sec/sec -- ranges from +-1 (30) to +-127 (4000)
+  homeAccel,
   homeJerk,
   homeOfsX,
   homeOfsY,
@@ -163,7 +164,7 @@ typedef struct StatusRec {
   uint8_t prod;           // product id (1 = XY base)
   uint8_t vers;           // XY (code and hw) version
   uint8_t padding[3];
-  int32_t distanceX;      // homing distance of last home operation
+  int32_t distanceX;      // position since clearDistance
   int32_t distanceY;
 } StatusRec;
 

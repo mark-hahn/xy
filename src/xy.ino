@@ -13,6 +13,7 @@
 #include "xy-server.h"
 #include "xy-spi.h"
 #include "xy-control.h"
+#include "xy-gcode.h"
 
 void setup() {
 	delay(1000);
@@ -34,13 +35,13 @@ void setup() {
   setupWebsocket();
 	initSpi();
 
-	test();
-
+	// test();
+  testGCodeLine("M92 E0 P-123.456", 0);
 }
 
 void loop() {
 	chkServer();
 	chkAjax();
 	chkUpdates();
-	chkCtrl();
+	// chkCtrl();
 }

@@ -8,7 +8,7 @@
 
 #define DEF_BIT_RATE    1000000 // (0.8 mbits)
 // #define DEF_BYTE_DELAY      0
-#define DEF_WORD_DELAY     300 // 250 failed
+#define DEF_WORD_DELAY     500 // 250 failed
 
 // status rec
 StatusRecU statusRec;
@@ -101,7 +101,7 @@ uint8_t zero2mcu(uint8_t mcu) {
 // send one byte immediate command with params, not per-axis
 uint8_t cmdWParams2mcu(uint8_t mcu, uint8_t cmd, uint8_t paramCount, uint8_t *params) {
 	digitalWrite(ssPinByMcu[mcu],0);
-  uint8_t status = trans2mcu(mcu, (0x80 | cmd));
+  uint8_t status = trans2mcu(mcu, (0x80 | cmd | (mcu << 5))); // mcu for debugging
   for(int i = 0; i < paramCount; i++) {
   	// delayMicroseconds(byteDelayByMcu[mcu]);
   	trans2mcu(mcu, params[i]);
@@ -113,6 +113,7 @@ uint8_t cmdWParams2mcu(uint8_t mcu, uint8_t cmd, uint8_t paramCount, uint8_t *pa
 
 uint8_t getMcuState(uint8_t mcu) {
   uint8_t mcu_state;
+  zero2mcu(mcu);
   do {
     mcu_state = zero2mcu(mcu);
     if(mcu_state == 0) delay(1);
