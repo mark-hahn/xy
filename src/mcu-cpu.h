@@ -1,6 +1,6 @@
 
-#ifndef CPU_H
-#define	CPU_H
+#ifndef MCUCPU_H
+#define	MCUCPU_H
 
 #include <stdint.h>
 
@@ -59,7 +59,8 @@ typedef enum Settings {
   motorCurrent,    // meaning varies between MCUs
   directionLevels, // x dir: d1, y dir: d0
   disableLimitX,
-
+  defaultAccell,
+  moveJerk,
   homingUstep,
   homingPps,
   homeBkupUstep,

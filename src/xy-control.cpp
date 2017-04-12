@@ -82,6 +82,7 @@ void chkTest();
 bool_t chkMcu1 = TRUE;
 bool_t runningTest = FALSE;
 
+
 /////////////////// action loop  ////////////////////
 bool_t lastPwr = 0;
 
@@ -92,13 +93,13 @@ void chkCtrl(){
 		Serial.print("pwr: "); Serial.println(lastPwr, DEC);
 	}
 
-  status[0] = getMcuState(0);
-  chkStatus(0, status[0]);
+  status[XY] = getMcuState(XY);
+  chkStatus(XY, status[XY]);
 
 	if(chkMcu1) {
-	  status[1] = getMcuState(1);
-	  if(status[1]) {
-			chkStatus(1, status[1]);
+	  status[Z] = getMcuState(Z);
+	  if(status[Z]) {
+			chkStatus(Z, status[Z]);
 			// chkMcu1 = FALSE;
 		}
 	}
@@ -241,6 +242,8 @@ bool_t penDn(uint16_t mmDist) {
   cmd2mcu(Z, moveCmd);
 	return TRUE;
 }
+
+
 
 
 ////////////////////////////  test  /////////////////////////////
