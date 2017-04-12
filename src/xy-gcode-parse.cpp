@@ -11,6 +11,14 @@ char     paramLetter[MAX_PARAMS];
 int32_t  paramMan[MAX_PARAMS];  // mantissa, val = paramMan * (10 **(-paramExp))
 uint8_t  paramExp[MAX_PARAMS];  // number of digits after dec point
 
+// truncate decimal fp to integer
+int32_t decFp2Int(int32_t man, uint8_t exp) {
+  if(exp == 0) return man;
+  int32_t div = 1;
+  for(; exp > 0; exp--) div *= 10;
+  return man / div;
+}
+
 // returns number of params or negative means syntax error code(code * 100 + param number)
 int16_t parseGCodeLine(char *chr) {
   char *end = chr + MAX_LINE_LEN;

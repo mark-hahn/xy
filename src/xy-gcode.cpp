@@ -31,9 +31,9 @@ uint8_t homeSubStepX, homeSubStepY;              // substep ofs of home (0-31)
 uint16_t mcu_accelX = mcu_accelY = mcu_accelZ = 0xffff; // integer mm/sec/sec
 
 
-/////////////////  global temp variables  /////////////////
-int32_t paramManX, paramManY, paramManZ;
-uint8_t paramExpX, paramExpY, paramExpZ;
+/////////////////  global temp parameter values  /////////////////
+int32_t paramManS, paramManP, paramManX, paramManY, paramManZ;
+uint8_t paramExpS, paramExpP, paramExpX, paramExpY, paramExpZ;
 
 
 /////////////////  utility routines  /////////////////
@@ -50,10 +50,12 @@ uint8_t findParam(char pltr) {
 }
 
 void handleParams() {
-  paramManX = paramManY = paramManZ = EMPTY_PARAM;
+  paramManS = paramManP = paramManX = paramManY = paramManZ = EMPTY_PARAM;
   for(uint8_t idx=1; idx < numParams; idx++) {
     switch(paramLetter[idx]) {
       'F': gc_feedRate = paramMan[idx]; gc_feedRateExp = paramExp[idx]; break;
+      'S': paramManS = paramMan[idx]; paramExpS = paramExp[idx]; break;
+      'P': paramManP = paramMan[idx]; paramExpP = paramExp[idx]; break;
       'X': paramManX = paramMan[idx]; paramExpX = paramExp[idx]; break;
       'Y': paramManY = paramMan[idx]; paramExpY = paramExp[idx]; break;
       'Z': paramManZ = paramMan[idx]; paramExpZ = paramExp[idx]; break;
@@ -63,19 +65,26 @@ void handleParams() {
   }
 }
 
+// convert gcode ustep format to mcu format
+// return 99 if invalid
+uint8_t ustepGc2Mcu(uint8_t gc_ustep) {
+  switch(gc_ustep) {
+    case  1: return 0;
+    case  2: return 1;
+    case  4: return 2;
+    case  8: return 3;
+    case 16: return 4;
+    case 32: return 5;
+  }
+  return 99;
+}
+
 // set ustep value, if present; return TRUE on error
 bool_t handleUstep(char paramLtr, uint8_t *ustepPtr, char *lineOut) {
   uint8_t idx = findParam(paramLtr);
   if(idx == 0) return FALSE;
-  uint8_t ustep;
-  switch(paramMan[idx]) {
-    case  1: ustep = 0; break;
-    case  2: ustep = 1; break;
-    case  4: ustep = 2; break;
-    case  8: ustep = 3; break;
-    case 16: ustep = 4; break;
-    case 32: ustep = 5; break;
-    default:
+  uint8_t ustep = (uint8_t) decFp2Int(paramMan[idx], paramExp[idx]);
+  if(ustepGc2Mcu(ustep) == 99) {
       gcodeErr(lineOut, "bad microstep value", paramLtr, paramMan[idx]);
       return TRUE;
   }
@@ -112,8 +121,16 @@ int8_t execGCodeLine(char *lineIn, char *lineOut) {
     case 10001: // G1
       handleParams();
       if(gc_accelX != mcu_accelX) {
-        settingsVector2mcu(XY, X, uint8_t 0, gc_ustepX,
-          gc_pps, uint8_t acceleration) {
+        settingsVector2mcu(XY, X, 0, gc_ustepX, 0, gc_accelX); // no dir or pps
+        mcu_accelX = gc_accelX;
+      }
+      if(gc_accelY != mcu_accelY) {
+        settingsVector2mcu(XY, Y, 0, gc_ustepY, 0, gc_accelY);
+        mcu_accelY = gc_accelY;
+      }
+      if(gc_accelZ != mcu_accelZ) {
+        settingsVector2mcu(Z, 0, 0, gc_ustepZ, 0, gc_accelZ); // no axis, dir, or pps
+        mcu_accelZ = gc_accelZ;
       }
       // int32_t mcu_newPosX = mcu_posX +
 
@@ -128,15 +145,15 @@ int8_t execGCodeLine(char *lineIn, char *lineOut) {
 
     case 20201: // M201: Set max acceleration (integer mm/sec/sec)
       handleParams();
-      if(paramManX != EMPTY_PARAM) gc_accelX = paramManX;
-      if(paramManY != EMPTY_PARAM) gc_accelY = paramManY;
-      if(paramManZ != EMPTY_PARAM) gc_accelZ = paramManZ;
+      if(paramManX != EMPTY_PARAM) gc_accelX = decFp2Int(paramManX, paramExpX);
+      if(paramManY != EMPTY_PARAM) gc_accelY = decFp2Int(paramManY, paramExpY);
+      if(paramManZ != EMPTY_PARAM) gc_accelZ = decFp2Int(paramManZ, paramExpZ);
       break;
 
     case 20205: // M205: Set max jerk (integer mm/sec)
       handleParams();
-      if(paramManX != EMPTY_PARAM) gc_jerkXY = paramManX;
-      if(paramManZ != EMPTY_PARAM) gc_jerkZ  = paramManZ;
+      if(paramManX != EMPTY_PARAM) gc_jerkXY = decFp2Int(paramManX, paramExpX);
+      if(paramManZ != EMPTY_PARAM) gc_jerkZ  = decFp2Int(paramManZ, paramExpZ);
       break;
 
     case 20206: // M206: Offset axes (change home position)
