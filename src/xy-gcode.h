@@ -2,7 +2,10 @@
 #ifndef GCODE
 #define GCODE
 
-void testGCodeLine(char *line, uint32_t lineNum);
+// on error, returns -1 and  line starts with ERROR:
+// return of 0 means to try again
+// return of 1 means to move on to next line
+int8_t execGCodeLine(char *lineIn, char *lineOut);
 
 /*
 http://www.reprap.org/wiki/G-code
